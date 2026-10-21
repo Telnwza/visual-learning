@@ -1,0 +1,63 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_bus_zero_extend",
+  "customs": {
+    "ss_bus_zero_extend": {
+      "moduleKind": "vhdl",
+      "name": "ss_bus_zero_extend",
+      "description": "Unsigned extension: preserve d and fill new upper bits with zero.",
+      "fileName": "ss_bus_zero_extend.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_bus_zero_extend is\n  generic (IN_WIDTH:positive range 1 to 64:=8; OUT_WIDTH:positive range IN_WIDTH to 64:=16);\n  port (d:in std_logic_vector(IN_WIDTH-1 downto 0);\n    y:out std_logic_vector(OUT_WIDTH-1 downto 0));\nend entity;\narchitecture rtl of ss_bus_zero_extend is begin\n  y <= std_logic_vector(resize(unsigned(d),OUT_WIDTH));\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "IN_WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 16,
+          "dataType": "std_logic_vector",
+          "left": 15,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "OUT_WIDTH-1",
+          "rightExpr": "0"
+        }
+      ],
+      "generics": [
+        {
+          "name": "IN_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "OUT_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "16",
+          "minExpr": "IN_WIDTH",
+          "maxExpr": "64",
+          "defaultValue": 16
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "ZERO_EXTEND",
+      "displayName": "Zero Extend",
+      "defaultInputs": {},
+      "inputNotes": "Combinational · OUT_WIDTH ≥ IN_WIDTH · ขยาย OUT_WIDTH ก่อนเพิ่ม IN_WIDTH"
+    }
+  }
+}

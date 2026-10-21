@@ -1,0 +1,80 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_bitwise",
+  "customs": {
+    "ss_bitwise": {
+      "moduleKind": "vhdl",
+      "name": "ss_bitwise",
+      "description": "AND/OR/XOR/NAND/NOR/XNOR/NOT a, with zero flag.",
+      "fileName": "ss_bitwise.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_bitwise is\n  generic (WIDTH:positive range 1 to 64:=8; OPERATION:natural range 0 to 6:=0);\n  port (a,b:in std_logic_vector(WIDTH-1 downto 0); y:out std_logic_vector(WIDTH-1 downto 0); zero:out std_logic);\nend entity;\narchitecture rtl of ss_bitwise is begin\n  process(a,b)\n    variable result:std_logic_vector(WIDTH-1 downto 0);\n  begin\n    case OPERATION is\n      when 0=>result:=a and b; when 1=>result:=a or b; when 2=>result:=a xor b;\n      when 3=>result:=a nand b; when 4=>result:=a nor b; when 5=>result:=a xnor b;\n      when others=>result:=not a;\n    end case;\n    y<=result; zero<='0'; if unsigned(result)=0 then zero<='1'; end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "a",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "b",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "OPERATION",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "6",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "BITWISE",
+      "displayName": "Bitwise Operations",
+      "defaultInputs": {},
+      "inputNotes": "OPERATION เลือกการทำงาน · NOT a ไม่ใช้ b แต่ควรต่อ b=0 เมื่อ import raw VHDL · WIDTH 1–64"
+    }
+  }
+}

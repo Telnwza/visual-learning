@@ -1,0 +1,26 @@
+{
+  "scope": "v2 New VHDL starter",
+  "tests": {
+    "command": "node --test --test-concurrency=1 schematic2vhdl-v2/ux-d.test.js schematic2vhdl-v2/editor-recovery-pairs.test.js schematic2vhdl-v2/version-isolation.test.js",
+    "pass": 48,
+    "fail": 0
+  },
+  "ghdl": {
+    "analysis": "passed",
+    "elaboration": "passed",
+    "note": "Existing linker warning: object built for newer macOS than link target."
+  },
+  "browser": {
+    "url": "http://127.0.0.1:8800/schematic2vhdl-v2/",
+    "prefilledHighlightedStarter": true,
+    "addModule": true,
+    "nextUniqueName": "new_module_2"
+  },
+  "original": {
+    "path": "schematic2vhdl/index.html",
+    "sha256": "0452df7eb95cf168caf5feba26d3debf4012e96432bf3e0151e9cc2eda12ab32",
+    "unchanged": true
+  },
+  "diffCheck": "passed",
+  "commitOrPush": false
+}

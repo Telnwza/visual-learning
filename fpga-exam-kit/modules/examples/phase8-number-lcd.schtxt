@@ -1,0 +1,46 @@
+format schematic-text 1
+circuit number_lcd16x2
+input clk, rst, en, value[16]
+output data[8], e, rs, rw, ready, busy, done, overflow
+use "CUSTOM:ss_bin_to_bcd" as binbcd
+use "CUSTOM:ss_number_formatter" as formatter
+use "CUSTOM:ss_text_overlay" as overlay
+use "CUSTOM:ss_lcd16x2" as lcd
+part digits @binbcd generic_WIDTH=16 generic_DIGITS=5
+part number @formatter generic_DIGITS=5
+part text @overlay
+part screen @lcd
+part label CONST width=64 value="20203A45554C4156"
+part spaces CONST width=64 value="2020202020202020"
+part position CONST width=5 value="10"
+connect value -> digits.d
+connect digits.bcd_lo -> number.digits_lo
+connect digits.bcd_hi -> number.digits_hi
+connect digits.negative -> number.negative
+connect digits.valid -> number.input_valid
+connect label.o -> text.base_0
+connect spaces.o -> text.base_1
+connect spaces.o -> text.base_2
+connect spaces.o -> text.base_3
+connect number.text_0 -> text.field_0
+connect number.text_1 -> text.field_1
+connect number.text_2 -> text.field_2
+connect number.text_3 -> text.field_3
+connect position.o -> text.offset
+connect number.length -> text.length
+connect number.valid -> text.field_valid
+connect text.text_0 -> screen.text_0
+connect text.text_1 -> screen.text_1
+connect text.text_2 -> screen.text_2
+connect text.text_3 -> screen.text_3
+connect clk -> screen.clk
+connect rst -> screen.rst
+connect en -> screen.en
+connect screen.data -> data
+connect screen.e -> e
+connect screen.rs -> rs
+connect screen.rw -> rw
+connect screen.ready -> ready
+connect screen.busy -> busy
+connect screen.done -> done
+connect digits.overflow -> overflow

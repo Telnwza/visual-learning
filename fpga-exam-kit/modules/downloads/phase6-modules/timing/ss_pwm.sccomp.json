@@ -1,0 +1,103 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_pwm",
+  "customs": {
+    "ss_pwm": {
+      "moduleKind": "vhdl",
+      "name": "ss_pwm",
+      "description": "Capture settings initially/at period boundaries; load forces restart; clamp duty to period; zero period/disable drive inactive output.",
+      "fileName": "ss_pwm.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_pwm is\n  generic (WIDTH:positive range 1 to 64:=16; ACTIVE_LOW:natural range 0 to 1:=0);\n  port (clk,rst,en,load:in std_logic;\n    period,duty:in std_logic_vector(WIDTH-1 downto 0);\n    pwm,valid:out std_logic);\nend entity;\narchitecture rtl of ss_pwm is\n  signal phase,period_reg,duty_reg:unsigned(WIDTH-1 downto 0):=(others=>'0');\n  signal active:std_logic;\nbegin\n  valid <= '1' when period_reg/=0 else '0';\n  active <= '1' when rst='0' and en='1' and period_reg/=0 and phase<duty_reg else '0';\n  pwm <= active when ACTIVE_LOW=0 else not active;\n  process(clk) begin\n    if rising_edge(clk) then\n      if rst='1' then phase<=(others=>'0'); period_reg<=(others=>'0'); duty_reg<=(others=>'0');\n      elsif load='1' or (en='1' and (period_reg=0 or phase=period_reg-1)) then\n        phase<=(others=>'0'); period_reg<=unsigned(period);\n        if unsigned(duty)>unsigned(period) then duty_reg<=unsigned(period);\n        else duty_reg<=unsigned(duty); end if;\n      elsif en='1' then phase<=phase+1;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "load",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "period",
+          "dir": "in",
+          "width": 16,
+          "dataType": "std_logic_vector",
+          "left": 15,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "duty",
+          "dir": "in",
+          "width": 16,
+          "dataType": "std_logic_vector",
+          "left": 15,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "pwm",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "16",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 16
+        },
+        {
+          "name": "ACTIVE_LOW",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "PWM",
+      "displayName": "PWM",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "load": 0
+      },
+      "inputNotes": "ต่อ clk หลัก · period/duty ต่อบัส/CONST · frequency=Fclk/period · duty=0 คือ 0%, duty≥period คือ 100% · en=0 output inactive และหยุด phase · ACTIVE_LOW กลับขั้ว output"
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "customs": {
+    "ss_priority_encoder": {
+      "moduleKind": "vhdl",
+      "name": "ss_priority_encoder",
+      "description": "1–64 inputs, fixed six-bit code, valid/multiple and optional strict one-hot mode.",
+      "fileName": "ss_priority_encoder.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_priority_encoder is\n  generic (INPUTS:positive range 1 to 64:=8; PRIORITY_HIGH:natural range 0 to 1:=1; ONE_HOT_ONLY:natural range 0 to 1:=0);\n  port (d:in std_logic_vector(INPUTS-1 downto 0); en:in std_logic;\n    code:out std_logic_vector(5 downto 0); valid,multiple:out std_logic);\nend entity;\narchitecture rtl of ss_priority_encoder is begin\n  process(d,en)\n    variable count:natural range 0 to 2;\n    variable index:natural range 0 to 63;\n  begin\n    count:=0; index:=0; code<=(others=>'0'); valid<='0'; multiple<='0';\n    if en='1' then\n      for i in 0 to INPUTS-1 loop\n        if d(i)='1' then\n          if count=0 or PRIORITY_HIGH=1 then index:=i; end if;\n          if count<2 then count:=count+1; end if;\n        end if;\n      end loop;\n      if count=2 then multiple<='1'; end if;\n      if count>0 and (ONE_HOT_ONLY=0 or count=1) then code<=std_logic_vector(to_unsigned(index,6)); valid<='1'; end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "INPUTS-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "code",
+          "dir": "out",
+          "width": 6,
+          "dataType": "std_logic_vector",
+          "left": 5,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "5",
+          "rightExpr": "0"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "multiple",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "INPUTS",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "PRIORITY_HIGH",
+          "dataType": "natural",
+          "defaultExpr": "1",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 1
+        },
+        {
+          "name": "ONE_HOT_ONLY",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "PRIORITY_ENCODER",
+      "displayName": "Priority Encoder + Valid",
+      "defaultInputs": {
+        "en": 1
+      },
+      "inputNotes": "code 6 bit เสมอ รองรับ index 0–63 · valid แยก index 0 จากไม่มี input · multiple=1 เมื่อมากกว่า 1 bit · en=0 outputs=0"
+    }
+  }
+}

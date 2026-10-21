@@ -1,0 +1,210 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "customs": {
+    "ss_input_sync": {
+      "moduleKind": "vhdl",
+      "name": "ss_input_sync",
+      "description": "Single-bit level synchronizer · STAGES sampling edges · reset → sampling",
+      "fileName": "ss_input_sync.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_input_sync is\n  generic (STAGES:positive range 2 to 64:=2; RESET_LEVEL:natural range 0 to 1:=0);\n  port (clk,rst,d:in std_logic; q:out std_logic);\nend entity;\narchitecture rtl of ss_input_sync is\n  constant levels:std_logic_vector(0 to 1):=\"01\";\n  signal pipe:std_logic_vector(STAGES-1 downto 0):=(others=>levels(RESET_LEVEL));\n  attribute ASYNC_REG:string;\n  attribute ASYNC_REG of pipe:signal is \"TRUE\";\nbegin\n  q <= pipe(STAGES-1);\n  process(clk) begin\n    if rising_edge(clk) then\n      if rst='1' then pipe <= (others=>levels(RESET_LEVEL));\n      else pipe <= pipe(STAGES-2 downto 0) & d;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "q",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "STAGES",
+          "dataType": "positive",
+          "defaultExpr": "2",
+          "minExpr": "2",
+          "maxExpr": "64",
+          "defaultValue": 2
+        },
+        {
+          "name": "RESET_LEVEL",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "SYNC",
+      "displayName": "Input Synchronizer",
+      "inputNotes": "clock ขาขึ้น · rst synchronous active high · รับระดับ 1 bit เท่านั้น; pulse สั้นหรือ bus ต้องใช้วงจรถ่ายโอนอีกแบบ · simulation ไม่จำลอง metastability",
+      "defaultInputs": {
+        "rst": 0
+      }
+    },
+    "ss_input_debounce": {
+      "moduleKind": "vhdl",
+      "name": "ss_input_debounce",
+      "description": "q=1 active/pressed · STABLE_CYCLES consecutive samples · pressed/released events last one clock",
+      "fileName": "ss_input_debounce.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_input_debounce is\n  generic (STABLE_CYCLES:positive range 1 to 2147483647:=500000; CLOCK_HZ:positive range 1 to 2147483647:=50000000; ACTIVE_LOW:natural range 0 to 1:=0);\n  port (clk,rst,d:in std_logic; q,pressed,released:out std_logic);\nend entity;\narchitecture rtl of ss_input_debounce is\n  signal level:std_logic:='0';\n  signal sample:std_logic;\n  signal count:natural range 0 to STABLE_CYCLES-1:=0;\n  signal press_event,release_event:std_logic:='0';\nbegin\n  sample <= not d when ACTIVE_LOW=1 else d;\n  q <= level; pressed <= press_event; released <= release_event;\n  process(clk) begin\n    if rising_edge(clk) then\n      press_event <= '0'; release_event <= '0';\n      if rst='1' then level <= '0'; count <= 0;\n      elsif sample=level then count <= 0;\n      elsif sample='0' or sample='1' then\n        if count=STABLE_CYCLES-1 then\n          level <= sample; count <= 0;\n          if sample='1' then press_event <= '1'; else release_event <= '1'; end if;\n        else count <= count+1;\n        end if;\n      else count <= 0;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "q",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "pressed",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "released",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "STABLE_CYCLES",
+          "dataType": "positive",
+          "defaultExpr": "500000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 500000
+        },
+        {
+          "name": "CLOCK_HZ",
+          "dataType": "positive",
+          "defaultExpr": "50000000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000000
+        },
+        {
+          "name": "ACTIVE_LOW",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "DEBOUNCE",
+      "displayName": "Debounce",
+      "inputNotes": "ต่อ d จาก Synchronizer (Reset level = ACTIVE_LOW เพื่อเริ่มที่ไม่กด) · clock ขาขึ้น · rst synchronous active high → inactive ไม่มี event · CLOCK_HZ ต้องตรงกับ clock ที่ต่อ; ไม่ได้สร้าง clock",
+      "defaultInputs": {
+        "rst": 0
+      }
+    },
+    "ss_input_edge": {
+      "moduleKind": "vhdl",
+      "name": "ss_input_edge",
+      "description": "MODE selects pulse · rise/fall always detect transitions · first post-reset sample establishes history without an event",
+      "fileName": "ss_input_edge.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_input_edge is\n  generic (MODE:natural range 0 to 2:=0);\n  port (clk,rst,d:in std_logic; pulse,rise,fall:out std_logic);\nend entity;\narchitecture rtl of ss_input_edge is\n  signal previous,armed:std_logic:='0';\n  signal event_selected,event_rise,event_fall:std_logic:='0';\nbegin\n  pulse <= event_selected; rise <= event_rise; fall <= event_fall;\n  process(clk) begin\n    if rising_edge(clk) then\n      event_selected <= '0'; event_rise <= '0'; event_fall <= '0';\n      if rst='1' then previous <= '0'; armed <= '0';\n      elsif d='0' or d='1' then\n        if armed='1' then\n          if previous='0' and d='1' then\n            event_rise <= '1'; if MODE=0 or MODE=2 then event_selected <= '1'; end if;\n          elsif previous='1' and d='0' then\n            event_fall <= '1'; if MODE=1 or MODE=2 then event_selected <= '1'; end if;\n          end if;\n        end if;\n        previous <= d; armed <= '1';\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "pulse",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rise",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "fall",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "2",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "EDGE",
+      "displayName": "Edge Detector",
+      "inputNotes": "d ต้องอยู่ใน clock domain เดียวกัน · clock ขาขึ้น · rst synchronous active high · ทั้งสองขอบอาจให้ pulse สูงติดกันเมื่อ d เปลี่ยนทุก clock",
+      "defaultInputs": {
+        "rst": 0
+      }
+    }
+  }
+}

@@ -1,0 +1,658 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "customs": {
+    "ss_add_sub": {
+      "moduleKind": "vhdl",
+      "name": "ss_add_sub",
+      "description": "WIDTH-bit result with carry/borrow input and independent unsigned/signed flags.",
+      "fileName": "ss_add_sub.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_add_sub is\n  generic (WIDTH:positive range 1 to 64:=8; SUBTRACT:natural range 0 to 1:=0; SIGNED_MODE:natural range 0 to 1:=0);\n  port (a,b:in std_logic_vector(WIDTH-1 downto 0); cin:in std_logic;\n    y:out std_logic_vector(WIDTH-1 downto 0); carry,borrow,overflow,zero,negative:out std_logic);\nend entity;\narchitecture rtl of ss_add_sub is begin\n  process(a,b,cin)\n    variable u:unsigned(WIDTH downto 0);\n    variable s:signed(WIDTH+1 downto 0);\n    variable result:std_logic_vector(WIDTH-1 downto 0);\n  begin\n    carry<='0'; borrow<='0'; overflow<='0'; negative<='0';\n    if SUBTRACT=0 then\n      u:=resize(unsigned(a),WIDTH+1)+resize(unsigned(b),WIDTH+1);\n      s:=resize(signed(a),WIDTH+2)+resize(signed(b),WIDTH+2);\n      if cin='1' then u:=u+1; s:=s+1; end if;\n      carry<=u(WIDTH);\n    else\n      u:=resize(unsigned(a),WIDTH+1)-resize(unsigned(b),WIDTH+1);\n      s:=resize(signed(a),WIDTH+2)-resize(signed(b),WIDTH+2);\n      if cin='1' then u:=u-1; s:=s-1; end if;\n      borrow<=u(WIDTH);\n    end if;\n    result:=std_logic_vector(u(WIDTH-1 downto 0)); y<=result;\n    if SIGNED_MODE=1 then\n      negative<=result(WIDTH-1);\n      if s/=resize(signed(result),WIDTH+2) then overflow<='1'; end if;\n    end if;\n    zero<='0'; if unsigned(result)=0 then zero<='1'; end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "a",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "b",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "cin",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "carry",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "borrow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "overflow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "negative",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "SUBTRACT",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        },
+        {
+          "name": "SIGNED_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "ADD_SUB",
+      "displayName": "Add / Subtract",
+      "defaultInputs": {
+        "cin": 0
+      },
+      "inputNotes": "SUBTRACT=0 บวก, 1 ลบ · cin เป็น carry in/borrow in ตามโหมด · carry/borrow ใช้ unsigned, overflow ใช้ signed · y คือ WIDTH บิตต่ำ"
+    },
+    "ss_multiply": {
+      "moduleKind": "vhdl",
+      "name": "ss_multiply",
+      "description": "Full 2*WIDTH-bit product split into two WIDTH-bit ports; overflow means it does not fit the low half.",
+      "fileName": "ss_multiply.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_multiply is\n  generic (WIDTH:positive range 1 to 64:=8; SIGNED_MODE:natural range 0 to 1:=0);\n  port (a,b:in std_logic_vector(WIDTH-1 downto 0);\n    result_lo,result_hi:out std_logic_vector(WIDTH-1 downto 0); overflow,zero,negative:out std_logic);\nend entity;\narchitecture rtl of ss_multiply is begin\n  process(a,b)\n    variable product:std_logic_vector(2*WIDTH-1 downto 0);\n  begin\n    overflow<='0'; negative<='0';\n    if SIGNED_MODE=1 then\n      product:=std_logic_vector(signed(a)*signed(b)); negative<=product(2*WIDTH-1);\n      if signed(product)/=resize(signed(product(WIDTH-1 downto 0)),2*WIDTH) then overflow<='1'; end if;\n    else\n      product:=std_logic_vector(unsigned(a)*unsigned(b));\n      if unsigned(product(2*WIDTH-1 downto WIDTH))/=0 then overflow<='1'; end if;\n    end if;\n    result_lo<=product(WIDTH-1 downto 0); result_hi<=product(2*WIDTH-1 downto WIDTH);\n    zero<='0'; if unsigned(product)=0 then zero<='1'; end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "a",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "b",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "result_lo",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "result_hi",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "overflow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "negative",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "SIGNED_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "MULTIPLY",
+      "displayName": "Full Multiply",
+      "defaultInputs": {},
+      "inputNotes": "ผลเต็ม = result_hi & result_lo · WIDTH=64 ได้ครบ 128 bit · overflow บอกว่าผลเต็มไม่พอดี WIDTH bit ไม่ได้แปลว่าผลเต็มหาย"
+    },
+    "ss_divide": {
+      "moduleKind": "vhdl",
+      "name": "ss_divide",
+      "description": "Capture on idle start; WIDTH enabled steps; signed quotient truncates toward zero, remainder follows dividend sign.",
+      "fileName": "ss_divide.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_divide is\n  generic (WIDTH:positive range 1 to 64:=8; SIGNED_MODE:natural range 0 to 1:=0);\n  port (clk,rst,en,start:in std_logic; a,b:in std_logic_vector(WIDTH-1 downto 0);\n    quotient,remainder:out std_logic_vector(WIDTH-1 downto 0);\n    busy,done,valid,divide_by_zero,overflow,zero,negative:out std_logic);\nend entity;\narchitecture rtl of ss_divide is\n  signal active,event_done,result_valid,error_zero,error_overflow:std_logic:='0';\n  signal q_work,divisor,q_result,r_result:unsigned(WIDTH-1 downto 0):=(others=>'0');\n  signal r_work:unsigned(WIDTH downto 0):=(others=>'0');\n  signal negate_q,negate_r:std_logic:='0';\n  signal step:natural range 0 to WIDTH-1:=0;\nbegin\n  quotient<=std_logic_vector(q_result); remainder<=std_logic_vector(r_result);\n  busy<=active; done<=event_done; valid<=result_valid; divide_by_zero<=error_zero; overflow<=error_overflow;\n  zero<='1' when q_result=0 else '0'; negative<=q_result(WIDTH-1) when SIGNED_MODE=1 else '0';\n  process(clk)\n    variable next_r:unsigned(WIDTH downto 0);\n    variable next_q,final_q,final_r,mag_a,mag_b,min_value:unsigned(WIDTH-1 downto 0);\n  begin\n    if rising_edge(clk) then\n      event_done<='0';\n      if rst='1' then\n        active<='0'; result_valid<='0'; error_zero<='0'; error_overflow<='0';\n        q_work<=(others=>'0'); divisor<=(others=>'0'); r_work<=(others=>'0');\n        q_result<=(others=>'0'); r_result<=(others=>'0'); negate_q<='0'; negate_r<='0'; step<=0;\n      elsif start='1' and active='0' then\n        result_valid<='0'; error_zero<='0'; error_overflow<='0';\n        mag_a:=unsigned(a); mag_b:=unsigned(b); min_value:=(others=>'0'); min_value(WIDTH-1):='1';\n        if unsigned(b)=0 then\n          q_result<=(others=>'0'); r_result<=unsigned(a); error_zero<='1'; event_done<='1';\n        elsif SIGNED_MODE=1 and unsigned(a)=min_value and signed(b)=-1 then\n          q_result<=unsigned(a); r_result<=(others=>'0'); error_overflow<='1'; event_done<='1';\n        else\n          negate_q<='0'; negate_r<='0';\n          if SIGNED_MODE=1 then\n            negate_q<=a(WIDTH-1) xor b(WIDTH-1); negate_r<=a(WIDTH-1);\n            if a(WIDTH-1)='1' then mag_a:=unsigned(-signed(a)); end if;\n            if b(WIDTH-1)='1' then mag_b:=unsigned(-signed(b)); end if;\n          end if;\n          q_work<=mag_a; divisor<=mag_b; r_work<=(others=>'0'); step<=0; active<='1';\n        end if;\n      elsif active='1' and en='1' then\n        next_r:=shift_left(r_work,1); next_r(0):=q_work(WIDTH-1); next_q:=shift_left(q_work,1);\n        if next_r>=resize(divisor,WIDTH+1) then next_r:=next_r-resize(divisor,WIDTH+1); next_q(0):='1'; end if;\n        q_work<=next_q; r_work<=next_r;\n        if step=WIDTH-1 then\n          final_q:=next_q; final_r:=next_r(WIDTH-1 downto 0);\n          if negate_q='1' then final_q:=unsigned(-signed(final_q)); end if;\n          if negate_r='1' then final_r:=unsigned(-signed(final_r)); end if;\n          q_result<=final_q; r_result<=final_r; active<='0'; event_done<='1'; result_valid<='1';\n        else step<=step+1; end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "start",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "a",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "b",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "quotient",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "remainder",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "busy",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "done",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "divide_by_zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "overflow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "negative",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "SIGNED_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "DIVIDE",
+      "displayName": "Iterative Divide / Remainder",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "start": 0
+      },
+      "inputNotes": "ต่อ clk หลัก · start pulse 1 clk · busy=1 ไม่รับ start ใหม่ · en=0 หยุดขั้นคำนวณ · done ยาว 1 clk · valid ค้างจน start/reset · หารศูนย์หรือ signed min/-1 valid=0 พร้อม error flag"
+    },
+    "ss_unary": {
+      "moduleKind": "vhdl",
+      "name": "ss_unary",
+      "description": "Negate or absolute value with signed/unsigned overflow, zero and negative flags.",
+      "fileName": "ss_unary.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_unary is\n  generic (WIDTH:positive range 1 to 64:=8; OPERATION:natural range 0 to 1:=0; SIGNED_MODE:natural range 0 to 1:=1);\n  port (d:in std_logic_vector(WIDTH-1 downto 0); y:out std_logic_vector(WIDTH-1 downto 0); overflow,zero,negative:out std_logic);\nend entity;\narchitecture rtl of ss_unary is begin\n  process(d)\n    variable result,min_value:unsigned(WIDTH-1 downto 0);\n    variable invert:boolean;\n  begin\n    min_value:=(others=>'0'); min_value(WIDTH-1):='1';\n    invert:=OPERATION=0 or (SIGNED_MODE=1 and d(WIDTH-1)='1');\n    result:=unsigned(d); if invert then result:=unsigned(-signed(d)); end if;\n    y<=std_logic_vector(result); overflow<='0'; negative<='0';\n    if SIGNED_MODE=1 then\n      negative<=result(WIDTH-1);\n      if invert and unsigned(d)=min_value then overflow<='1'; end if;\n    elsif invert and unsigned(d)/=0 then overflow<='1'; end if;\n    zero<='0'; if result=0 then zero<='1'; end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "overflow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "negative",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "OPERATION",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        },
+        {
+          "name": "SIGNED_MODE",
+          "dataType": "natural",
+          "defaultExpr": "1",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 1
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "UNARY",
+      "displayName": "Negate / Absolute",
+      "defaultInputs": {},
+      "inputNotes": "Signed min ทำ negate/abs ไม่พอดี WIDTH: คง bit pattern และ overflow=1 · unsigned negate ใช้ modulo 2**WIDTH และ overflow=1 ถ้า d≠0"
+    },
+    "ss_bitwise": {
+      "moduleKind": "vhdl",
+      "name": "ss_bitwise",
+      "description": "AND/OR/XOR/NAND/NOR/XNOR/NOT a, with zero flag.",
+      "fileName": "ss_bitwise.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_bitwise is\n  generic (WIDTH:positive range 1 to 64:=8; OPERATION:natural range 0 to 6:=0);\n  port (a,b:in std_logic_vector(WIDTH-1 downto 0); y:out std_logic_vector(WIDTH-1 downto 0); zero:out std_logic);\nend entity;\narchitecture rtl of ss_bitwise is begin\n  process(a,b)\n    variable result:std_logic_vector(WIDTH-1 downto 0);\n  begin\n    case OPERATION is\n      when 0=>result:=a and b; when 1=>result:=a or b; when 2=>result:=a xor b;\n      when 3=>result:=a nand b; when 4=>result:=a nor b; when 5=>result:=a xnor b;\n      when others=>result:=not a;\n    end case;\n    y<=result; zero<='0'; if unsigned(result)=0 then zero<='1'; end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "a",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "b",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "OPERATION",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "6",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "BITWISE",
+      "displayName": "Bitwise Operations",
+      "defaultInputs": {},
+      "inputNotes": "OPERATION เลือกการทำงาน · NOT a ไม่ใช้ b แต่ควรต่อ b=0 เมื่อ import raw VHDL · WIDTH 1–64"
+    },
+    "ss_shift_rotate": {
+      "moduleKind": "vhdl",
+      "name": "ss_shift_rotate",
+      "description": "Logical/arithmetic shifts and bit rotations; seven-bit unsigned amount supports 0–127.",
+      "fileName": "ss_shift_rotate.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_shift_rotate is\n  generic (WIDTH:positive range 1 to 64:=8; OPERATION:natural range 0 to 4:=0);\n  port (d:in std_logic_vector(WIDTH-1 downto 0); amount:in std_logic_vector(6 downto 0);\n    y:out std_logic_vector(WIDTH-1 downto 0); zero:out std_logic);\nend entity;\narchitecture rtl of ss_shift_rotate is begin\n  process(d,amount)\n    variable result:std_logic_vector(WIDTH-1 downto 0);\n    variable count:natural range 0 to 127;\n  begin\n    result:=(others=>'0'); zero<='0';\n    if not is_x(amount) then\n      count:=to_integer(unsigned(amount));\n      case OPERATION is\n        when 0=>result:=std_logic_vector(shift_left(unsigned(d),count));\n        when 1=>result:=std_logic_vector(shift_right(unsigned(d),count));\n        when 2=>result:=std_logic_vector(shift_right(signed(d),count));\n        when 3=>result:=std_logic_vector(rotate_left(unsigned(d),count));\n        when others=>result:=std_logic_vector(rotate_right(unsigned(d),count));\n      end case;\n      if unsigned(result)=0 then zero<='1'; end if;\n    else result:=(others=>'X'); end if;\n    y<=result;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "amount",
+          "dir": "in",
+          "width": 7,
+          "dataType": "std_logic_vector",
+          "left": 6,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "6",
+          "rightExpr": "0"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "OPERATION",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "4",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "SHIFT_ROTATE",
+      "displayName": "Shift / Rotate",
+      "defaultInputs": {},
+      "inputNotes": "amount 7 bit · shift ≥ WIDTH เติม 0/sign · rotate ใช้ amount mod WIDTH · arithmetic right รักษา sign bit"
+    },
+    "ss_reduce": {
+      "moduleKind": "vhdl",
+      "name": "ss_reduce",
+      "description": "Reduction AND/OR/XOR plus parity bits to append for even/odd total parity.",
+      "fileName": "ss_reduce.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_reduce is\n  generic (WIDTH:positive range 1 to 64:=8);\n  port (d:in std_logic_vector(WIDTH-1 downto 0); all_one,any_one,xor_reduce,even_parity,odd_parity:out std_logic);\nend entity;\narchitecture rtl of ss_reduce is begin\n  process(d)\n    variable a,o,x:std_logic;\n  begin\n    a:='1'; o:='0'; x:='0';\n    for i in 0 to WIDTH-1 loop a:=a and d(i); o:=o or d(i); x:=x xor d(i); end loop;\n    all_one<=a; any_one<=o; xor_reduce<=x; even_parity<=x; odd_parity<=not x;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "all_one",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "any_one",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "xor_reduce",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "even_parity",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "odd_parity",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "REDUCE",
+      "displayName": "Reduction / Parity",
+      "defaultInputs": {},
+      "inputNotes": "even_parity คือ bit ที่เติมแล้วจำนวน 1 เป็นคู่ · odd_parity คือ bit ที่เติมแล้วจำนวน 1 เป็นคี่"
+    }
+  }
+}

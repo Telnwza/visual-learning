@@ -1,0 +1,474 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_lcd_write",
+  "customs": {
+    "ss_lcd_write": {
+      "moduleKind": "vhdl",
+      "name": "ss_lcd_write",
+      "description": "8-bit LCD byte transaction. start while busy ignored. Data/RS held; RW=0. Timing is in main-clock cycles.",
+      "fileName": "ss_lcd_write.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_lcd_write is\n  generic (SETUP_CYCLES:positive range 1 to 2147483647:=50000;\n    HIGH_CYCLES:positive range 1 to 2147483647:=50000;\n    HOLD_CYCLES:positive range 1 to 2147483647:=50000);\n  port (clk,rst,start:in std_logic; byte_in:in std_logic_vector(7 downto 0); rs_in:in std_logic;\n    data:out std_logic_vector(7 downto 0); e,rs,rw,busy,done:out std_logic);\nend entity;\narchitecture rtl of ss_lcd_write is\n  type states is (idle,setup,high_phase,hold_phase);\n  signal state:states:=idle;\n  signal count:natural range 0 to 2147483646:=0;\n  signal value:std_logic_vector(7 downto 0):=(others=>'0'); signal register_select:std_logic:='0';\nbegin\n  data<=value; rs<=register_select; rw<='0';\n  e<='1' when state=high_phase else '0'; busy<='0' when state=idle else '1';\n  process(clk)\n  begin\n    if rising_edge(clk) then\n      done<='0';\n      if rst='1' then state<=idle; count<=0; value<=(others=>'0'); register_select<='0';\n      else\n        case state is\n          when idle => if start='1' then value<=byte_in; register_select<=rs_in; count<=0; state<=setup; end if;\n          when setup => if count=SETUP_CYCLES-1 then count<=0; state<=high_phase; else count<=count+1; end if;\n          when high_phase => if count=HIGH_CYCLES-1 then count<=0; state<=hold_phase; else count<=count+1; end if;\n          when hold_phase => if count=HOLD_CYCLES-1 then count<=0; state<=idle; done<='1'; else count<=count+1; end if;\n        end case;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "start",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "byte_in",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "7",
+          "rightExpr": "0"
+        },
+        {
+          "name": "rs_in",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "data",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "7",
+          "rightExpr": "0"
+        },
+        {
+          "name": "e",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rs",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rw",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "busy",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "done",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "SETUP_CYCLES",
+          "dataType": "positive",
+          "defaultExpr": "50000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000
+        },
+        {
+          "name": "HIGH_CYCLES",
+          "dataType": "positive",
+          "defaultExpr": "50000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000
+        },
+        {
+          "name": "HOLD_CYCLES",
+          "dataType": "positive",
+          "defaultExpr": "50000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "LCD_WRITE",
+      "inputNotes": "8-bit LCD byte transaction. start while busy ignored. Data/RS held; RW=0. Timing is in main-clock cycles.",
+      "defaultInputs": {
+        "rst": 0,
+        "start": 0,
+        "rs_in": 0
+      }
+    },
+    "ss_lcd16x2": {
+      "moduleKind": "vhdl",
+      "name": "ss_lcd16x2",
+      "description": "32 text cells as four 64-bit buses. Cell 0=text_0 bits 7:0. Initializes even with en=0; en only gates new frames, never interrupts E. update while busy ignored. RW=0.",
+      "fileName": "ss_lcd16x2.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_lcd16x2 is\n  generic (POWERUP_CYCLES:positive range 1 to 2147483647:=2500000;\n    INIT_WAIT_CYCLES:positive range 1 to 2147483647:=250000;\n    CLEAR_WAIT_CYCLES:positive range 1 to 2147483647:=100000;\n    STEP_CYCLES:positive range 1 to 2147483647:=50000;\n    AUTO_REFRESH:natural range 0 to 1:=1);\n  port (clk,rst,en,update:in std_logic; text_0,text_1,text_2,text_3:in std_logic_vector(63 downto 0);\n    data:out std_logic_vector(7 downto 0); e,rs,rw,ready,busy,done:out std_logic);\nend entity;\narchitecture rtl of ss_lcd16x2 is\n  type states is (powerup,issue_byte,wait_byte,delay_byte,idle);\n  signal state:states:=powerup;\n  signal count:natural range 0 to 2147483646:=0;\n  signal command:natural range 0 to 6:=0;\n  signal cell:natural range 0 to 33:=0;\n  signal initialized:std_logic:='0';\n  signal frame:std_logic_vector(255 downto 0):=(others=>'0');\n  signal byte_start,byte_done,byte_rs:std_logic:='0';\n  signal byte_value:std_logic_vector(7 downto 0);\nbegin\n  ready<=initialized; busy<='0' when state=idle else '1';\n  writer:entity work.ss_lcd_write generic map(SETUP_CYCLES=>STEP_CYCLES,HIGH_CYCLES=>STEP_CYCLES,HOLD_CYCLES=>STEP_CYCLES)\n    port map(clk=>clk,rst=>rst,start=>byte_start,byte_in=>byte_value,rs_in=>byte_rs,data=>data,e=>e,rs=>rs,rw=>rw,busy=>open,done=>byte_done);\n  process(initialized,command,cell,frame)\n  begin\n    byte_rs<='0'; byte_value<=x\"00\";\n    if initialized='0' then\n      case command is\n        when 0|1|2 => byte_value<=x\"30\";\n        when 3 => byte_value<=x\"38\";\n        when 4 => byte_value<=x\"0C\";\n        when 5 => byte_value<=x\"06\";\n        when others => byte_value<=x\"01\";\n      end case;\n    elsif cell=0 then byte_value<=x\"80\";\n    elsif cell=17 then byte_value<=x\"C0\";\n    else\n      byte_rs<='1';\n      if cell<17 then byte_value<=frame(8*(cell-1)+7 downto 8*(cell-1));\n      else byte_value<=frame(8*(cell-2)+7 downto 8*(cell-2)); end if;\n    end if;\n  end process;\n  process(clk)\n    variable delay_cycles:positive;\n  begin\n    if rising_edge(clk) then\n      byte_start<='0'; done<='0';\n      if rst='1' then state<=powerup; count<=0; command<=0; cell<=0; initialized<='0'; frame<=(others=>'0');\n      else\n        case state is\n          when powerup => if count=POWERUP_CYCLES-1 then count<=0; state<=issue_byte; else count<=count+1; end if;\n          when issue_byte => byte_start<='1'; state<=wait_byte;\n          when wait_byte =>\n            if byte_done='1' then\n              if initialized='0' then count<=0; state<=delay_byte;\n              elsif cell=33 then done<='1'; state<=idle;\n              else cell<=cell+1; state<=issue_byte; end if;\n            end if;\n          when delay_byte =>\n            delay_cycles:=INIT_WAIT_CYCLES; if command=6 then delay_cycles:=CLEAR_WAIT_CYCLES; end if;\n            if count=delay_cycles-1 then\n              count<=0;\n              if command=6 then initialized<='1'; state<=idle; else command<=command+1; state<=issue_byte; end if;\n            else count<=count+1; end if;\n          when idle =>\n            if en='1' and (AUTO_REFRESH=1 or update='1') then frame<=text_3 & text_2 & text_1 & text_0; cell<=0; state<=issue_byte; end if;\n        end case;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "update",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "text_0",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "63",
+          "rightExpr": "0"
+        },
+        {
+          "name": "text_1",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "63",
+          "rightExpr": "0"
+        },
+        {
+          "name": "text_2",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "63",
+          "rightExpr": "0"
+        },
+        {
+          "name": "text_3",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "63",
+          "rightExpr": "0"
+        },
+        {
+          "name": "data",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "7",
+          "rightExpr": "0"
+        },
+        {
+          "name": "e",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rs",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rw",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "ready",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "busy",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "done",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "POWERUP_CYCLES",
+          "dataType": "positive",
+          "defaultExpr": "2500000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 2500000
+        },
+        {
+          "name": "INIT_WAIT_CYCLES",
+          "dataType": "positive",
+          "defaultExpr": "250000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 250000
+        },
+        {
+          "name": "CLEAR_WAIT_CYCLES",
+          "dataType": "positive",
+          "defaultExpr": "100000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 100000
+        },
+        {
+          "name": "STEP_CYCLES",
+          "dataType": "positive",
+          "defaultExpr": "50000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000
+        },
+        {
+          "name": "AUTO_REFRESH",
+          "dataType": "natural",
+          "defaultExpr": "1",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 1
+        }
+      ],
+      "dependencies": [
+        "ss_lcd_write"
+      ],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "LCD16X2",
+      "inputNotes": "32 text cells as four 64-bit buses. Cell 0=text_0 bits 7:0. Initializes even with en=0; en only gates new frames, never interrupts E. update while busy ignored. RW=0.",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "update": 0
+      }
+    },
+    "ss_text_overlay": {
+      "moduleKind": "vhdl",
+      "name": "ss_text_overlay",
+      "description": "Overlay 0–31 field bytes at cell offset 0–31 over 32 base cells. Clip at end; invalid field passes base with valid=0.",
+      "fileName": "ss_text_overlay.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_text_overlay is\n  port (base_0,base_1,base_2,base_3,field_0,field_1,field_2,field_3:in std_logic_vector(63 downto 0);\n    offset,length:in std_logic_vector(4 downto 0); en,field_valid:in std_logic;\n    text_0,text_1,text_2,text_3:out std_logic_vector(63 downto 0); valid,clipped:out std_logic);\nend entity;\narchitecture rtl of ss_text_overlay is begin\n  process(base_0,base_1,base_2,base_3,field_0,field_1,field_2,field_3,offset,length,en,field_valid)\n    variable text_value,field:std_logic_vector(255 downto 0);\n    variable first,count:natural range 0 to 31;\n  begin\n    text_value:=base_3 & base_2 & base_1 & base_0; field:=field_3 & field_2 & field_1 & field_0;\n    valid<='0'; clipped<='0';\n    if en='0' then valid<='1';\n    elsif en='1' and field_valid='1' and not is_x(offset) and not is_x(length) then\n      first:=to_integer(unsigned(offset)); count:=to_integer(unsigned(length)); valid<='1';\n      if first+count>32 then clipped<='1'; end if;\n      for i in 0 to 30 loop\n        if i<count and first+i<32 then text_value(8*(first+i)+7 downto 8*(first+i)):=field(8*i+7 downto 8*i); end if;\n      end loop;\n    end if;\n    text_0<=text_value(63 downto 0); text_1<=text_value(127 downto 64);\n    text_2<=text_value(191 downto 128); text_3<=text_value(255 downto 192);\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "base_0",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "base_1",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "base_2",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "base_3",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "field_0",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "field_1",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "field_2",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "field_3",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "offset",
+          "dir": "in",
+          "width": 5,
+          "dataType": "std_logic_vector",
+          "left": 4,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "length",
+          "dir": "in",
+          "width": 5,
+          "dataType": "std_logic_vector",
+          "left": 4,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "field_valid",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "text_0",
+          "dir": "out",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "text_1",
+          "dir": "out",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "text_2",
+          "dir": "out",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "text_3",
+          "dir": "out",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "clipped",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "TEXT_OVERLAY",
+      "inputNotes": "Overlay 0–31 field bytes at cell offset 0–31 over 32 base cells. Clip at end; invalid field passes base with valid=0.",
+      "defaultInputs": {
+        "en": 1,
+        "field_valid": 1
+      }
+    }
+  }
+}

@@ -1,0 +1,175 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_text_overlay",
+  "customs": {
+    "ss_text_overlay": {
+      "moduleKind": "vhdl",
+      "name": "ss_text_overlay",
+      "description": "Overlay 0–31 field bytes at cell offset 0–31 over 32 base cells. Clip at end; invalid field passes base with valid=0.",
+      "fileName": "ss_text_overlay.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_text_overlay is\n  port (base_0,base_1,base_2,base_3,field_0,field_1,field_2,field_3:in std_logic_vector(63 downto 0);\n    offset,length:in std_logic_vector(4 downto 0); en,field_valid:in std_logic;\n    text_0,text_1,text_2,text_3:out std_logic_vector(63 downto 0); valid,clipped:out std_logic);\nend entity;\narchitecture rtl of ss_text_overlay is begin\n  process(base_0,base_1,base_2,base_3,field_0,field_1,field_2,field_3,offset,length,en,field_valid)\n    variable text_value,field:std_logic_vector(255 downto 0);\n    variable first,count:natural range 0 to 31;\n  begin\n    text_value:=base_3 & base_2 & base_1 & base_0; field:=field_3 & field_2 & field_1 & field_0;\n    valid<='0'; clipped<='0';\n    if en='0' then valid<='1';\n    elsif en='1' and field_valid='1' and not is_x(offset) and not is_x(length) then\n      first:=to_integer(unsigned(offset)); count:=to_integer(unsigned(length)); valid<='1';\n      if first+count>32 then clipped<='1'; end if;\n      for i in 0 to 30 loop\n        if i<count and first+i<32 then text_value(8*(first+i)+7 downto 8*(first+i)):=field(8*i+7 downto 8*i); end if;\n      end loop;\n    end if;\n    text_0<=text_value(63 downto 0); text_1<=text_value(127 downto 64);\n    text_2<=text_value(191 downto 128); text_3<=text_value(255 downto 192);\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "base_0",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "base_1",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "base_2",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "base_3",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "field_0",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "field_1",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "field_2",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "field_3",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "offset",
+          "dir": "in",
+          "width": 5,
+          "dataType": "std_logic_vector",
+          "left": 4,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "length",
+          "dir": "in",
+          "width": 5,
+          "dataType": "std_logic_vector",
+          "left": 4,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "field_valid",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "text_0",
+          "dir": "out",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "text_1",
+          "dir": "out",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "text_2",
+          "dir": "out",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "text_3",
+          "dir": "out",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "clipped",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "TEXT_OVERLAY",
+      "inputNotes": "Overlay 0–31 field bytes at cell offset 0–31 over 32 base cells. Clip at end; invalid field passes base with valid=0.",
+      "defaultInputs": {
+        "en": 1,
+        "field_valid": 1
+      }
+    }
+  }
+}

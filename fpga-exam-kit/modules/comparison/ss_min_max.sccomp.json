@@ -1,0 +1,85 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_min_max",
+  "customs": {
+    "ss_min_max": {
+      "moduleKind": "vhdl",
+      "name": "ss_min_max",
+      "description": "Return the ordered pair using configured signedness.",
+      "fileName": "ss_min_max.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_min_max is\n  generic (WIDTH:positive range 1 to 64:=8; SIGNED_MODE:natural range 0 to 1:=0);\n  port (a,b:in std_logic_vector(WIDTH-1 downto 0); minimum,maximum:out std_logic_vector(WIDTH-1 downto 0));\nend entity;\narchitecture rtl of ss_min_max is begin\n  process(a,b)\n    variable less:boolean;\n  begin\n    if SIGNED_MODE=1 then less:=signed(a)<signed(b); else less:=unsigned(a)<unsigned(b); end if;\n    minimum<=b; maximum<=a; if less then minimum<=a; maximum<=b; end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "a",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "b",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "minimum",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "maximum",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "SIGNED_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "MIN_MAX",
+      "displayName": "Minimum / Maximum",
+      "defaultInputs": {},
+      "inputNotes": "a,b → minimum,maximum · WIDTH 1–64 · signed/unsigned เลือกแยกแต่ละกล่อง"
+    }
+  }
+}

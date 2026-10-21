@@ -1,0 +1,71 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_input_edge",
+  "customs": {
+    "ss_input_edge": {
+      "moduleKind": "vhdl",
+      "name": "ss_input_edge",
+      "description": "MODE selects pulse · rise/fall always detect transitions · first post-reset sample establishes history without an event",
+      "fileName": "ss_input_edge.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_input_edge is\n  generic (MODE:natural range 0 to 2:=0);\n  port (clk,rst,d:in std_logic; pulse,rise,fall:out std_logic);\nend entity;\narchitecture rtl of ss_input_edge is\n  signal previous,armed:std_logic:='0';\n  signal event_selected,event_rise,event_fall:std_logic:='0';\nbegin\n  pulse <= event_selected; rise <= event_rise; fall <= event_fall;\n  process(clk) begin\n    if rising_edge(clk) then\n      event_selected <= '0'; event_rise <= '0'; event_fall <= '0';\n      if rst='1' then previous <= '0'; armed <= '0';\n      elsif d='0' or d='1' then\n        if armed='1' then\n          if previous='0' and d='1' then\n            event_rise <= '1'; if MODE=0 or MODE=2 then event_selected <= '1'; end if;\n          elsif previous='1' and d='0' then\n            event_fall <= '1'; if MODE=1 or MODE=2 then event_selected <= '1'; end if;\n          end if;\n        end if;\n        previous <= d; armed <= '1';\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "pulse",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rise",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "fall",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "2",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "EDGE",
+      "displayName": "Edge Detector",
+      "inputNotes": "d ต้องอยู่ใน clock domain เดียวกัน · clock ขาขึ้น · rst synchronous active high · ทั้งสองขอบอาจให้ pulse สูงติดกันเมื่อ d เปลี่ยนทุก clock",
+      "defaultInputs": {
+        "rst": 0
+      }
+    }
+  }
+}

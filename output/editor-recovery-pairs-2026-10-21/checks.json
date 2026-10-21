@@ -1,0 +1,72 @@
+{
+  "date": "2026-10-21",
+  "tests": {
+    "passed": 146,
+    "failed": 0,
+    "skipped": 0,
+    "files": [
+      "editor-recovery-pairs.test.js",
+      "ux-d.test.js",
+      "multi-wire.test.js",
+      "ux-a.test.js",
+      "vhdl-generic.test.js",
+      "parameter-change.test.js",
+      "component-resize.test.js"
+    ]
+  },
+  "browser": {
+    "newDraftSurvivesReload": true,
+    "inspectorDraftSurvivesReload": true,
+    "draftExcludedFromGeneratedSourceUntilUpdate": true,
+    "updateAfterGenerate": true,
+    "cancelDiscardsDraft": true,
+    "nativeUndoForIndentAndReplace": true,
+    "multilineIndentOutdentRoundTrip": true,
+    "findEscapeKeepsEditorOpen": true,
+    "bothThemes": true,
+    "scroll": {
+      "top": 1942,
+      "left": 3754.5,
+      "gutterRight": 1000.1171875,
+      "textareaLeft": 1000.1171875,
+      "paintLeft": 1000.1171875,
+      "textMatches": true
+    },
+    "pairwise": {
+      "manualMapping": true,
+      "swap": true,
+      "cancel": true,
+      "width": 64,
+      "afterConnectWires": 3,
+      "afterOneUndoWires": 0,
+      "afterRedoWires": 3
+    }
+  },
+  "ghdl": [
+    {
+      "command": [
+        "ghdl",
+        "-a",
+        "--std=08",
+        "browser-paired.vhd"
+      ],
+      "returncode": 0,
+      "output": ""
+    },
+    {
+      "command": [
+        "ghdl",
+        "-e",
+        "--std=08",
+        "top"
+      ],
+      "returncode": 0,
+      "output": "ld: warning: object file (/private/var/folders/bc/0t78kzzn5rnc3wbxrp3b8l5c0000gn/T/studio-pair-ghdl-7gek80my/e~top.o) was built for newer 'macOS' version (28.0) than being linked (27.0)\nld: warning: object file (/private/var/folders/bc/0t78kzzn5rnc3wbxrp3b8l5c0000gn/T/studio-pair-ghdl-7gek80my/browser-paired.o) was built for newer 'macOS' version (28.0) than being linked (27.0)\n"
+    }
+  ],
+  "moduleArtifacts": {
+    "checked": 220,
+    "changed": []
+  },
+  "indexSha256": "48b29abc9c55dacbe38562d2611df896ebdae1c0af78e43a5b65703f26fd728b"
+}

@@ -1,0 +1,645 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "customs": {
+    "ss_counter": {
+      "moduleKind": "vhdl",
+      "name": "ss_counter",
+      "description": "Inclusive unsigned bounds; reset → load → enable; WRAP chooses wrap or stop.",
+      "fileName": "ss_counter.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_counter is\n  generic (WIDTH:positive range 1 to 64:=8; WRAP:natural range 0 to 1:=1);\n  port (clk,rst,en,load,down:in std_logic;\n    minimum,maximum,load_value:in std_logic_vector(WIDTH-1 downto 0);\n    q:out std_logic_vector(WIDTH-1 downto 0);\n    valid,terminal,wrapped:out std_logic);\nend entity;\narchitecture rtl of ss_counter is\n  signal value:unsigned(WIDTH-1 downto 0):=(others=>'0');\n  signal wrap_event:std_logic:='0';\nbegin\n  q <= std_logic_vector(value);\n  valid <= '1' when unsigned(minimum)<=unsigned(maximum) and value>=unsigned(minimum) and value<=unsigned(maximum) else '0';\n  terminal <= '1' when unsigned(minimum)<=unsigned(maximum) and\n    ((down='0' and value=unsigned(maximum)) or (down='1' and value=unsigned(minimum))) else '0';\n  wrapped <= wrap_event;\n  process(clk)\n    variable lo,hi,first:unsigned(WIDTH-1 downto 0);\n  begin\n    if rising_edge(clk) then\n      lo:=unsigned(minimum); hi:=unsigned(maximum);\n      first:=lo; if down='1' then first:=hi; end if;\n      wrap_event<='0';\n      if rst='1' then value<=first;\n      elsif lo<=hi then\n        if load='1' then\n          if unsigned(load_value)<lo then value<=lo;\n          elsif unsigned(load_value)>hi then value<=hi;\n          else value<=unsigned(load_value); end if;\n        elsif en='1' then\n          if value<lo or value>hi then value<=first;\n          elsif (down='0' and value=hi) or (down='1' and value=lo) then\n            if WRAP=1 then value<=first; wrap_event<='1'; end if;\n          elsif down='1' then value<=value-1;\n          else value<=value+1; end if;\n        end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "load",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "down",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "minimum",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "maximum",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "load_value",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "q",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "terminal",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "wrapped",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "WRAP",
+          "dataType": "natural",
+          "defaultExpr": "1",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 1
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "COUNTER",
+      "displayName": "Synchronous Counter",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "load": 0,
+        "down": 0,
+        "minimum": 0,
+        "load_value": 0
+      },
+      "inputNotes": "ต่อ clk หลัก · maximum ต่อ CONST · down=0 ขึ้น/1 ลง · rst เลือกต้นช่วงตามทิศทาง · load clamp เข้าช่วงและทำงานแม้ en=0"
+    },
+    "ss_counter_skip": {
+      "moduleKind": "vhdl",
+      "name": "ss_counter_skip",
+      "description": "Four WIDTH-bit exclusion slots; SKIP_COUNT selects the first 0–4 slots; no allowed candidate holds q and raises blocked.",
+      "fileName": "ss_counter_skip.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_counter_skip is\n  generic (WIDTH:positive range 1 to 64:=8; WRAP:natural range 0 to 1:=1;\n    SKIP_COUNT:natural range 0 to 4:=0);\n  port (clk,rst,en,load,down:in std_logic;\n    minimum,maximum,load_value:in std_logic_vector(WIDTH-1 downto 0);\n    skip_0,skip_1,skip_2,skip_3:in std_logic_vector(WIDTH-1 downto 0);\n    q:out std_logic_vector(WIDTH-1 downto 0);\n    valid,wrapped,blocked:out std_logic);\nend entity;\narchitecture rtl of ss_counter_skip is\n  type value_list is array(0 to 3) of unsigned(WIDTH-1 downto 0);\n  type search_result is record\n    value:unsigned(WIDTH-1 downto 0);\n    found,crossed:boolean;\n  end record;\n  signal exclusions:value_list;\n  signal value:unsigned(WIDTH-1 downto 0):=(others=>'0');\n  signal wrap_event,blocked_event:std_logic:='0';\n  function excluded(v:unsigned; values:value_list) return boolean is\n  begin\n    for i in 0 to SKIP_COUNT-1 loop if v=values(i) then return true; end if; end loop;\n    return false;\n  end function;\n  function search(first,lo,hi:unsigned; values:value_list; backwards,can_wrap:boolean) return search_result is\n    variable result:search_result;\n    variable candidate:unsigned(WIDTH-1 downto 0):=first;\n  begin\n    result.value:=first; result.found:=false; result.crossed:=false;\n    -- Four exclusions can block at most four distinct candidates.\n    for attempt in 0 to 4 loop\n      if not excluded(candidate,values) then result.value:=candidate; result.found:=true; exit; end if;\n      if (not backwards and candidate=hi) or (backwards and candidate=lo) then\n        if not can_wrap then exit; end if;\n        result.crossed:=true;\n        candidate:=lo; if backwards then candidate:=hi; end if;\n      elsif backwards then candidate:=candidate-1;\n      else candidate:=candidate+1; end if;\n    end loop;\n    return result;\n  end function;\nbegin\n  exclusions <= (unsigned(skip_0),unsigned(skip_1),unsigned(skip_2),unsigned(skip_3));\n  q <= std_logic_vector(value); wrapped <= wrap_event; blocked <= blocked_event;\n  valid <= '1' when unsigned(minimum)<=unsigned(maximum) and value>=unsigned(minimum) and\n    value<=unsigned(maximum) and not excluded(value,exclusions) else '0';\n  process(clk)\n    variable lo,hi,first,candidate:unsigned(WIDTH-1 downto 0);\n    variable result:search_result;\n    variable crossing,can_search:boolean;\n  begin\n    if rising_edge(clk) then\n      lo:=unsigned(minimum); hi:=unsigned(maximum);\n      first:=lo; if down='1' then first:=hi; end if;\n      wrap_event<='0';\n      if rst='1' then\n        value<=first; blocked_event<='1';\n        if lo<=hi then\n          result:=search(first,lo,hi,exclusions,down='1',true);\n          if result.found then value<=result.value; blocked_event<='0'; end if;\n        end if;\n      elsif load='1' or en='1' then\n        blocked_event<='1'; crossing:=false; can_search:=lo<=hi; candidate:=first;\n        if lo<=hi then\n          if load='1' then\n            candidate:=unsigned(load_value);\n            if candidate<lo then candidate:=lo; elsif candidate>hi then candidate:=hi; end if;\n          elsif value>=lo and value<=hi and not excluded(value,exclusions) then\n            if (down='0' and value=hi) or (down='1' and value=lo) then\n              can_search:=WRAP=1; crossing:=WRAP=1;\n            elsif down='1' then candidate:=value-1;\n            else candidate:=value+1; end if;\n          end if;\n          if can_search then\n            result:=search(candidate,lo,hi,exclusions,down='1',WRAP=1);\n            if result.found then\n              value<=result.value; blocked_event<='0';\n              if crossing or result.crossed then wrap_event<='1'; end if;\n            end if;\n          end if;\n        end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "load",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "down",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "minimum",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "maximum",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "load_value",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "skip_0",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "skip_1",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "skip_2",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "skip_3",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "q",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "wrapped",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "blocked",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "WRAP",
+          "dataType": "natural",
+          "defaultExpr": "1",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 1
+        },
+        {
+          "name": "SKIP_COUNT",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "4",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "COUNTER_SKIP",
+      "displayName": "Counter Skip Values",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "load": 0,
+        "down": 0,
+        "minimum": 0,
+        "load_value": 0,
+        "skip_0": 0,
+        "skip_1": 0,
+        "skip_2": 0,
+        "skip_3": 0
+      },
+      "inputNotes": "ต่อ clk หลัก · maximum และค่าที่จะข้ามต่อ CONST · SKIP_COUNT=2 ใช้ skip_0/skip_1 · blocked คือการค้นหาล่าสุดไม่พบตัวถัดไป รวมกรณี stop · rst ค้นหาค่าเริ่มที่ไม่ถูกข้าม"
+    },
+    "ss_tick": {
+      "moduleKind": "vhdl",
+      "name": "ss_tick",
+      "description": "One tick every DIVISOR enabled rising edges; reset clears phase; DIVISOR=1 gives an event each enabled edge.",
+      "fileName": "ss_tick.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_tick is\n  generic (DIVISOR:positive range 1 to 2147483647:=50000000);\n  port (clk,rst,en:in std_logic; tick:out std_logic);\nend entity;\narchitecture rtl of ss_tick is\n  signal count:natural range 0 to DIVISOR-1:=0;\n  signal event_tick:std_logic:='0';\nbegin\n  tick <= event_tick;\n  process(clk) begin\n    if rising_edge(clk) then\n      event_tick<='0';\n      if rst='1' then count<=0;\n      elsif en='1' then\n        if count=DIVISOR-1 then count<=0; event_tick<='1';\n        else count<=count+1; end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "tick",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "DIVISOR",
+          "dataType": "positive",
+          "defaultExpr": "50000000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000000
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "TICK",
+      "displayName": "Tick Generator",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1
+      },
+      "inputNotes": "50 MHz / DIVISOR = ความถี่ tick · DIVISOR=50000000 ได้ 1 Hz · ใช้ tick ต่อ en ของโมดูลที่ใช้ clk หลักร่วมกัน"
+    },
+    "ss_clock_divider": {
+      "moduleKind": "vhdl",
+      "name": "ss_clock_divider",
+      "description": "Integer division: low=ceil(D/2), high=floor(D/2); tick marks the end of each period; disable holds clock level and phase.",
+      "fileName": "ss_clock_divider.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_clock_divider is\n  generic (DIVISOR:positive range 2 to 2147483647:=50000000);\n  port (clk,rst,en:in std_logic; clk_out,tick:out std_logic);\nend entity;\narchitecture rtl of ss_clock_divider is\n  constant LOW_CYCLES:positive:=DIVISOR-DIVISOR/2;\n  signal count:natural range 0 to DIVISOR-1:=0;\n  signal level,event_tick:std_logic:='0';\nbegin\n  clk_out <= level; tick <= event_tick;\n  process(clk) begin\n    if rising_edge(clk) then\n      event_tick<='0';\n      if rst='1' then count<=0; level<='0';\n      elsif en='1' then\n        if count=LOW_CYCLES-1 then level<='1'; end if;\n        if count=DIVISOR-1 then count<=0; level<='0'; event_tick<='1';\n        else count<=count+1; end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "clk_out",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "tick",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "DIVISOR",
+          "dataType": "positive",
+          "defaultExpr": "50000000",
+          "minExpr": "2",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000000
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "DIVIDER",
+      "displayName": "Clock Divider",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1
+      },
+      "inputNotes": "ต่อ clk หลัก · DIVISOR ≥ 2 · ความถี่ 50 MHz / DIVISOR · หารเลขคี่ duty ไม่เท่ากับ 50% · tick เหมาะสำหรับต่อ en โดยใช้ clk เดิมร่วมกัน"
+    },
+    "ss_timer": {
+      "moduleKind": "vhdl",
+      "name": "ss_timer",
+      "description": "Start captures duration; done follows duration enabled progress edges; pulse=busy; zero duration completes at start.",
+      "fileName": "ss_timer.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_timer is\n  generic (WIDTH:positive range 1 to 64:=32; RETRIGGER:natural range 0 to 1:=1);\n  port (clk,rst,en,start,cancel:in std_logic;\n    duration:in std_logic_vector(WIDTH-1 downto 0);\n    busy,done,pulse:out std_logic;\n    remaining:out std_logic_vector(WIDTH-1 downto 0));\nend entity;\narchitecture rtl of ss_timer is\n  signal active,completion:std_logic:='0';\n  signal left_cycles:unsigned(WIDTH-1 downto 0):=(others=>'0');\nbegin\n  busy <= active; pulse <= active; done <= completion;\n  remaining <= std_logic_vector(left_cycles);\n  process(clk) begin\n    if rising_edge(clk) then\n      completion<='0';\n      if rst='1' or cancel='1' then active<='0'; left_cycles<=(others=>'0');\n      elsif start='1' and (active='0' or RETRIGGER=1) then\n        left_cycles<=unsigned(duration);\n        if unsigned(duration)=0 then active<='0'; completion<='1';\n        else active<='1'; end if;\n      elsif en='1' and active='1' then\n        if left_cycles=1 then active<='0'; left_cycles<=(others=>'0'); completion<='1';\n        else left_cycles<=left_cycles-1; end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "start",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "cancel",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "duration",
+          "dir": "in",
+          "width": 32,
+          "dataType": "std_logic_vector",
+          "left": 31,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "busy",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "done",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "pulse",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "remaining",
+          "dir": "out",
+          "width": 32,
+          "dataType": "std_logic_vector",
+          "left": 31,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "32",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 32
+        },
+        {
+          "name": "RETRIGGER",
+          "dataType": "natural",
+          "defaultExpr": "1",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 1
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "TIMER",
+      "displayName": "Timer / Delay / One-shot",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "start": 0,
+        "cancel": 0
+      },
+      "inputNotes": "ต่อ clk หลัก · duration ต่อบัส/CONST · start ใช้ pulse 1 clock · rst/cancel ยกเลิก · done ยาว 1 clk · en=0 หยุดเวลาและค้าง pulse · RETRIGGER เลือกเริ่มใหม่ขณะ busy"
+    },
+    "ss_pwm": {
+      "moduleKind": "vhdl",
+      "name": "ss_pwm",
+      "description": "Capture settings initially/at period boundaries; load forces restart; clamp duty to period; zero period/disable drive inactive output.",
+      "fileName": "ss_pwm.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_pwm is\n  generic (WIDTH:positive range 1 to 64:=16; ACTIVE_LOW:natural range 0 to 1:=0);\n  port (clk,rst,en,load:in std_logic;\n    period,duty:in std_logic_vector(WIDTH-1 downto 0);\n    pwm,valid:out std_logic);\nend entity;\narchitecture rtl of ss_pwm is\n  signal phase,period_reg,duty_reg:unsigned(WIDTH-1 downto 0):=(others=>'0');\n  signal active:std_logic;\nbegin\n  valid <= '1' when period_reg/=0 else '0';\n  active <= '1' when rst='0' and en='1' and period_reg/=0 and phase<duty_reg else '0';\n  pwm <= active when ACTIVE_LOW=0 else not active;\n  process(clk) begin\n    if rising_edge(clk) then\n      if rst='1' then phase<=(others=>'0'); period_reg<=(others=>'0'); duty_reg<=(others=>'0');\n      elsif load='1' or (en='1' and (period_reg=0 or phase=period_reg-1)) then\n        phase<=(others=>'0'); period_reg<=unsigned(period);\n        if unsigned(duty)>unsigned(period) then duty_reg<=unsigned(period);\n        else duty_reg<=unsigned(duty); end if;\n      elsif en='1' then phase<=phase+1;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "load",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "period",
+          "dir": "in",
+          "width": 16,
+          "dataType": "std_logic_vector",
+          "left": 15,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "duty",
+          "dir": "in",
+          "width": 16,
+          "dataType": "std_logic_vector",
+          "left": 15,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "pwm",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "16",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 16
+        },
+        {
+          "name": "ACTIVE_LOW",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "PWM",
+      "displayName": "PWM",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "load": 0
+      },
+      "inputNotes": "ต่อ clk หลัก · period/duty ต่อบัส/CONST · frequency=Fclk/period · duty=0 คือ 0%, duty≥period คือ 100% · en=0 output inactive และหยุด phase · ACTIVE_LOW กลับขั้ว output"
+    }
+  }
+}

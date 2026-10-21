@@ -1,0 +1,23 @@
+format schematic-text 1
+circuit decimal_four_digits
+input clk, rst, en, value[16], blank[4], dot[4]
+output segment[7], dp, common[4], overflow
+use "CUSTOM:ss_bin_to_bcd" as binbcd
+use "CUSTOM:ss_sevenseg_digits" as pack
+use "CUSTOM:ss_sevenseg_scan" as scanner
+part conversion @binbcd generic_WIDTH=16 generic_DIGITS=4
+part display @pack generic_DIGITS=4
+part scan @scanner generic_DIGITS=4 generic_SLOT_CYCLES=50000
+connect value -> conversion.d
+connect conversion.bcd_lo -> display.digits_in
+connect blank -> display.blank
+connect dot -> display.dot
+connect display.patterns_lo -> scan.patterns_lo
+connect display.patterns_hi -> scan.patterns_hi
+connect clk -> scan.clk
+connect rst -> scan.rst
+connect en -> scan.en
+connect scan.segment -> segment
+connect scan.dp -> dp
+connect scan.digit -> common
+connect conversion.overflow -> overflow

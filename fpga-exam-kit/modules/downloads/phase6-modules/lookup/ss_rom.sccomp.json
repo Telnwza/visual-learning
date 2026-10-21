@@ -1,0 +1,100 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_rom",
+  "customs": {
+    "ss_rom": {
+      "moduleKind": "vhdl",
+      "name": "ss_rom",
+      "description": "Editable 64-entry table; configurable active entry count and combinational/clocked read; invalid address outputs zero/valid=0.",
+      "fileName": "ss_rom.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_rom is\n  generic (DATA_WIDTH:positive range 1 to 64:=8;\n    ADDR_WIDTH:positive range 1 to 6:=3;\n    ENTRY_COUNT:positive range 1 to 2**ADDR_WIDTH:=8;\n    CLOCKED:natural range 0 to 1:=0);\n  port (clk,rst:in std_logic;\n    addr:in std_logic_vector(ADDR_WIDTH-1 downto 0);\n    data:out std_logic_vector(DATA_WIDTH-1 downto 0); valid:out std_logic);\nend entity;\narchitecture rtl of ss_rom is\n  type rom_table is array(0 to 63) of std_logic_vector(63 downto 0);\n  -- Edit these entries, then use Change source in Studio to update the imported box.\n  constant TABLE_DATA:rom_table:=(\n    0=>x\"0000000000000000\", 1=>x\"0000000000000001\",\n    2=>x\"0000000000000002\", 3=>x\"0000000000000003\",\n    4=>x\"0000000000000004\", 5=>x\"0000000000000005\",\n    6=>x\"0000000000000006\", 7=>x\"0000000000000007\",\n    others=>(others=>'0'));\n  signal value:std_logic_vector(DATA_WIDTH-1 downto 0):=(others=>'0');\n  signal address_valid:std_logic:='0';\nbegin\n  entries:for i in 0 to ENTRY_COUNT-1 generate\n    assert resize(resize(unsigned(TABLE_DATA(i)),DATA_WIDTH),64)=unsigned(TABLE_DATA(i))\n      report \"ROM entry does not fit DATA_WIDTH\" severity failure;\n  end generate;\n  process(addr)\n    variable index:natural range 0 to 63;\n  begin\n    value<=(others=>'0'); address_valid<='0';\n    if not is_x(addr) then\n      index:=to_integer(unsigned(addr));\n      if index<ENTRY_COUNT then value<=TABLE_DATA(index)(DATA_WIDTH-1 downto 0); address_valid<='1'; end if;\n    end if;\n  end process;\n  combinational:if CLOCKED=0 generate data<=value; valid<=address_valid; end generate;\n  registered:if CLOCKED=1 generate\n    process(clk) begin\n      if rising_edge(clk) then\n        if rst='1' then data<=(others=>'0'); valid<='0';\n        else data<=value; valid<=address_valid; end if;\n      end if;\n    end process;\n  end generate;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "addr",
+          "dir": "in",
+          "width": 3,
+          "dataType": "std_logic_vector",
+          "left": 2,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "ADDR_WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "data",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "DATA_WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "DATA_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "ADDR_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "3",
+          "minExpr": "1",
+          "maxExpr": "6",
+          "defaultValue": 3
+        },
+        {
+          "name": "ENTRY_COUNT",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "2**ADDR_WIDTH",
+          "defaultValue": 8
+        },
+        {
+          "name": "CLOCKED",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "ROM",
+      "displayName": "Editable LUT / ROM",
+      "defaultInputs": {
+        "clk": 0,
+        "rst": 0
+      },
+      "inputNotes": "แก้ TABLE_DATA ในไฟล์ .vhd แล้ว Change source · ค่าต้องพอดี DATA_WIDTH · CLOCKED=1 ต้องต่อ clk และ reset · ADDR_WIDTH 1–6, ENTRY_COUNT ≤ 2**ADDR_WIDTH"
+    }
+  }
+}

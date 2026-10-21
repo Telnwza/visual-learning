@@ -1,0 +1,380 @@
+{
+  "version": 2,
+  "workspace": {
+    "projects": {
+      "prj2": {
+        "name": "mux_4to1_8bit",
+        "topId": "sch1",
+        "schematics": {
+          "sch1": {
+            "id": "sch1",
+            "name": "mux_4to1_8bit",
+            "components": [
+              {
+                "id": "c3",
+                "type": "MUX",
+                "x": 440,
+                "y": 220,
+                "params": {
+                  "inputs": 4,
+                  "width": 8
+                }
+              },
+              {
+                "id": "c4",
+                "type": "IN",
+                "x": 176,
+                "y": 220,
+                "params": {
+                  "name": "data0",
+                  "width": 8
+                }
+              },
+              {
+                "id": "c6",
+                "type": "IN",
+                "x": 176,
+                "y": 242,
+                "params": {
+                  "name": "data1",
+                  "width": 8
+                }
+              },
+              {
+                "id": "c8",
+                "type": "IN",
+                "x": 176,
+                "y": 264,
+                "params": {
+                  "name": "data2",
+                  "width": 8
+                }
+              },
+              {
+                "id": "c10",
+                "type": "IN",
+                "x": 176,
+                "y": 286,
+                "params": {
+                  "name": "data3",
+                  "width": 8
+                }
+              },
+              {
+                "id": "c12",
+                "type": "IN",
+                "x": 176,
+                "y": 330,
+                "params": {
+                  "name": "sel0",
+                  "width": 1
+                }
+              },
+              {
+                "id": "c14",
+                "type": "IN",
+                "x": 176,
+                "y": 352,
+                "params": {
+                  "name": "sel1",
+                  "width": 1
+                }
+              },
+              {
+                "id": "c16",
+                "type": "OUT",
+                "x": 660,
+                "y": 286,
+                "params": {
+                  "name": "result",
+                  "width": 8
+                }
+              }
+            ],
+            "wires": [
+              {
+                "id": "w5",
+                "from": {
+                  "cid": "c4",
+                  "pid": "o"
+                },
+                "to": {
+                  "cid": "c3",
+                  "pid": "d0"
+                },
+                "name": ""
+              },
+              {
+                "id": "w7",
+                "from": {
+                  "cid": "c6",
+                  "pid": "o"
+                },
+                "to": {
+                  "cid": "c3",
+                  "pid": "d1"
+                },
+                "name": ""
+              },
+              {
+                "id": "w9",
+                "from": {
+                  "cid": "c8",
+                  "pid": "o"
+                },
+                "to": {
+                  "cid": "c3",
+                  "pid": "d2"
+                },
+                "name": ""
+              },
+              {
+                "id": "w11",
+                "from": {
+                  "cid": "c10",
+                  "pid": "o"
+                },
+                "to": {
+                  "cid": "c3",
+                  "pid": "d3"
+                },
+                "name": ""
+              },
+              {
+                "id": "w13",
+                "from": {
+                  "cid": "c12",
+                  "pid": "o"
+                },
+                "to": {
+                  "cid": "c3",
+                  "pid": "s0"
+                },
+                "name": ""
+              },
+              {
+                "id": "w15",
+                "from": {
+                  "cid": "c14",
+                  "pid": "o"
+                },
+                "to": {
+                  "cid": "c3",
+                  "pid": "s1"
+                },
+                "name": ""
+              },
+              {
+                "id": "w17",
+                "from": {
+                  "cid": "c3",
+                  "pid": "y"
+                },
+                "to": {
+                  "cid": "c16",
+                  "pid": "i"
+                },
+                "name": ""
+              }
+            ]
+          }
+        },
+        "customs": {},
+        "id": "prj2",
+        "openTabs": [
+          "sch1"
+        ],
+        "activeId": "sch1"
+      }
+    },
+    "activeId": "prj2"
+  },
+  "project": {
+    "name": "mux_4to1_8bit",
+    "topId": "sch1",
+    "schematics": {
+      "sch1": {
+        "id": "sch1",
+        "name": "mux_4to1_8bit",
+        "components": [
+          {
+            "id": "c3",
+            "type": "MUX",
+            "x": 440,
+            "y": 220,
+            "params": {
+              "inputs": 4,
+              "width": 8
+            }
+          },
+          {
+            "id": "c4",
+            "type": "IN",
+            "x": 176,
+            "y": 220,
+            "params": {
+              "name": "data0",
+              "width": 8
+            }
+          },
+          {
+            "id": "c6",
+            "type": "IN",
+            "x": 176,
+            "y": 242,
+            "params": {
+              "name": "data1",
+              "width": 8
+            }
+          },
+          {
+            "id": "c8",
+            "type": "IN",
+            "x": 176,
+            "y": 264,
+            "params": {
+              "name": "data2",
+              "width": 8
+            }
+          },
+          {
+            "id": "c10",
+            "type": "IN",
+            "x": 176,
+            "y": 286,
+            "params": {
+              "name": "data3",
+              "width": 8
+            }
+          },
+          {
+            "id": "c12",
+            "type": "IN",
+            "x": 176,
+            "y": 330,
+            "params": {
+              "name": "sel0",
+              "width": 1
+            }
+          },
+          {
+            "id": "c14",
+            "type": "IN",
+            "x": 176,
+            "y": 352,
+            "params": {
+              "name": "sel1",
+              "width": 1
+            }
+          },
+          {
+            "id": "c16",
+            "type": "OUT",
+            "x": 660,
+            "y": 286,
+            "params": {
+              "name": "result",
+              "width": 8
+            }
+          }
+        ],
+        "wires": [
+          {
+            "id": "w5",
+            "from": {
+              "cid": "c4",
+              "pid": "o"
+            },
+            "to": {
+              "cid": "c3",
+              "pid": "d0"
+            },
+            "name": ""
+          },
+          {
+            "id": "w7",
+            "from": {
+              "cid": "c6",
+              "pid": "o"
+            },
+            "to": {
+              "cid": "c3",
+              "pid": "d1"
+            },
+            "name": ""
+          },
+          {
+            "id": "w9",
+            "from": {
+              "cid": "c8",
+              "pid": "o"
+            },
+            "to": {
+              "cid": "c3",
+              "pid": "d2"
+            },
+            "name": ""
+          },
+          {
+            "id": "w11",
+            "from": {
+              "cid": "c10",
+              "pid": "o"
+            },
+            "to": {
+              "cid": "c3",
+              "pid": "d3"
+            },
+            "name": ""
+          },
+          {
+            "id": "w13",
+            "from": {
+              "cid": "c12",
+              "pid": "o"
+            },
+            "to": {
+              "cid": "c3",
+              "pid": "s0"
+            },
+            "name": ""
+          },
+          {
+            "id": "w15",
+            "from": {
+              "cid": "c14",
+              "pid": "o"
+            },
+            "to": {
+              "cid": "c3",
+              "pid": "s1"
+            },
+            "name": ""
+          },
+          {
+            "id": "w17",
+            "from": {
+              "cid": "c3",
+              "pid": "y"
+            },
+            "to": {
+              "cid": "c16",
+              "pid": "i"
+            },
+            "name": ""
+          }
+        ]
+      }
+    },
+    "customs": {},
+    "id": "prj2",
+    "openTabs": [
+      "sch1"
+    ],
+    "activeId": "sch1"
+  },
+  "activeId": "sch1",
+  "openTabs": [
+    "sch1"
+  ]
+}

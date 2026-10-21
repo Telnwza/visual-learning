@@ -1,0 +1,131 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_reg_piso",
+  "customs": {
+    "ss_reg_piso": {
+      "moduleKind": "vhdl",
+      "name": "ss_reg_piso",
+      "description": "reset → clock + enable → load (priority) / shift",
+      "fileName": "ss_reg_piso.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_reg_piso is\n  generic (WIDTH:positive range 1 to 64:=8;\n    EDGE_FALLING:natural range 0 to 1:=0;\n    RESET_ASYNC:natural range 0 to 1:=0;\n    DIR_RIGHT:natural range 0 to 1:=0);\n  port (clk,en,rst:in std_logic;\n    reset_value:in std_logic_vector(WIDTH-1 downto 0);\n    d:in std_logic_vector(WIDTH-1 downto 0);\n    load:in std_logic;\n    si:in std_logic;\n    q:out std_logic_vector(WIDTH-1 downto 0);\n    so:out std_logic);\nend entity;\narchitecture rtl of ss_reg_piso is\n  signal r:std_logic_vector(WIDTH-1 downto 0):=(others=>'0');\nbegin\n  q <= r;\n  so <= r(0) when DIR_RIGHT=1 else r(WIDTH-1);\n  edge_0_reset_0:if EDGE_FALLING=0 and RESET_ASYNC=0 generate\n    process(clk) begin\n      if rising_edge(clk) then if rst='1' then r <= reset_value; elsif en='1' then if load='1' then r <= d; else if DIR_RIGHT=1 then r <= std_logic_vector(shift_right(unsigned(r),1)); r(WIDTH-1) <= si; else r <= std_logic_vector(shift_left(unsigned(r),1)); r(0) <= si; end if; end if; end if; end if;\n    end process;\n  end generate;\n  edge_0_reset_1:if EDGE_FALLING=0 and RESET_ASYNC=1 generate\n    process(clk,rst,reset_value) begin\n      if rst='1' then r <= reset_value; elsif rising_edge(clk) then if en='1' then if load='1' then r <= d; else if DIR_RIGHT=1 then r <= std_logic_vector(shift_right(unsigned(r),1)); r(WIDTH-1) <= si; else r <= std_logic_vector(shift_left(unsigned(r),1)); r(0) <= si; end if; end if; end if; end if;\n    end process;\n  end generate;\n  edge_1_reset_0:if EDGE_FALLING=1 and RESET_ASYNC=0 generate\n    process(clk) begin\n      if falling_edge(clk) then if rst='1' then r <= reset_value; elsif en='1' then if load='1' then r <= d; else if DIR_RIGHT=1 then r <= std_logic_vector(shift_right(unsigned(r),1)); r(WIDTH-1) <= si; else r <= std_logic_vector(shift_left(unsigned(r),1)); r(0) <= si; end if; end if; end if; end if;\n    end process;\n  end generate;\n  edge_1_reset_1:if EDGE_FALLING=1 and RESET_ASYNC=1 generate\n    process(clk,rst,reset_value) begin\n      if rst='1' then r <= reset_value; elsif falling_edge(clk) then if en='1' then if load='1' then r <= d; else if DIR_RIGHT=1 then r <= std_logic_vector(shift_right(unsigned(r),1)); r(WIDTH-1) <= si; else r <= std_logic_vector(shift_left(unsigned(r),1)); r(0) <= si; end if; end if; end if; end if;\n    end process;\n  end generate;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "reset_value",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "load",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "si",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "q",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "so",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "EDGE_FALLING",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        },
+        {
+          "name": "RESET_ASYNC",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        },
+        {
+          "name": "DIR_RIGHT",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "PISO",
+      "displayName": "PISO",
+      "defaultInputs": {
+        "en": 1,
+        "rst": 0,
+        "reset_value": 0,
+        "load": 0,
+        "si": 0
+      }
+    }
+  }
+}

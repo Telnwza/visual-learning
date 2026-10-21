@@ -1,6 +1,6 @@
 # Schematic Text v1
 
-Canonical specification for the importer in `schematic2vhdl/index.html`.
+Canonical specification for the importer in `schematic2vhdl-v2/index.html`.
 
 One file creates one new sheet in the current project. Existing sheets/custom blocks remain shared live references. Import does not change the project's top entity; choose the new top in the Inspector if required. New hierarchy definitions in one file, VHDL expressions, slices, loops, and arbitrary JSON parameters are not supported.
 

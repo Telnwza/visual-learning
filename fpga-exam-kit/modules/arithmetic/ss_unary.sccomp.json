@@ -1,0 +1,89 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_unary",
+  "customs": {
+    "ss_unary": {
+      "moduleKind": "vhdl",
+      "name": "ss_unary",
+      "description": "Negate or absolute value with signed/unsigned overflow, zero and negative flags.",
+      "fileName": "ss_unary.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_unary is\n  generic (WIDTH:positive range 1 to 64:=8; OPERATION:natural range 0 to 1:=0; SIGNED_MODE:natural range 0 to 1:=1);\n  port (d:in std_logic_vector(WIDTH-1 downto 0); y:out std_logic_vector(WIDTH-1 downto 0); overflow,zero,negative:out std_logic);\nend entity;\narchitecture rtl of ss_unary is begin\n  process(d)\n    variable result,min_value:unsigned(WIDTH-1 downto 0);\n    variable invert:boolean;\n  begin\n    min_value:=(others=>'0'); min_value(WIDTH-1):='1';\n    invert:=OPERATION=0 or (SIGNED_MODE=1 and d(WIDTH-1)='1');\n    result:=unsigned(d); if invert then result:=unsigned(-signed(d)); end if;\n    y<=std_logic_vector(result); overflow<='0'; negative<='0';\n    if SIGNED_MODE=1 then\n      negative<=result(WIDTH-1);\n      if invert and unsigned(d)=min_value then overflow<='1'; end if;\n    elsif invert and unsigned(d)/=0 then overflow<='1'; end if;\n    zero<='0'; if result=0 then zero<='1'; end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "overflow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "negative",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "OPERATION",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        },
+        {
+          "name": "SIGNED_MODE",
+          "dataType": "natural",
+          "defaultExpr": "1",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 1
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "UNARY",
+      "displayName": "Negate / Absolute",
+      "defaultInputs": {},
+      "inputNotes": "Signed min ทำ negate/abs ไม่พอดี WIDTH: คง bit pattern และ overflow=1 · unsigned negate ใช้ modulo 2**WIDTH และ overflow=1 ถ้า d≠0"
+    }
+  }
+}

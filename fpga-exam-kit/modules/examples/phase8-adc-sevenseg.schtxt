@@ -1,0 +1,31 @@
+format schematic-text 1
+circuit lab_adc_four_digits
+input clk, clear_valid, dout_miso, display_rst, display_en
+output sck, din_mosi, cs, sample_raw[12], sample_valid, valid, segment[7], dp, common[4]
+use "CUSTOM:ss_spi_adc_lab" as adc
+use "CUSTOM:ss_bin_to_bcd" as binbcd
+use "CUSTOM:ss_sevenseg_digits" as pack
+use "CUSTOM:ss_sevenseg_scan" as scanner
+part input @adc
+part conversion @binbcd generic_WIDTH=12 generic_DIGITS=4
+part display @pack generic_DIGITS=4
+part scan @scanner generic_DIGITS=4
+connect clk -> input.clk
+connect clear_valid -> input.clear_valid
+connect dout_miso -> input.dout_miso
+connect input.sck -> sck
+connect input.din_mosi -> din_mosi
+connect input.cs -> cs
+connect input.sample_raw -> sample_raw
+connect input.sample_valid -> sample_valid
+connect input.valid -> valid
+connect input.sample_raw -> conversion.d
+connect conversion.bcd_lo -> display.digits_in
+connect display.patterns_lo -> scan.patterns_lo
+connect display.patterns_hi -> scan.patterns_hi
+connect clk -> scan.clk
+connect display_rst -> scan.rst
+connect display_en -> scan.en
+connect scan.segment -> segment
+connect scan.dp -> dp
+connect scan.digit -> common

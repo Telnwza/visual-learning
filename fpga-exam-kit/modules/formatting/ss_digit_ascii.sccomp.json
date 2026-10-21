@@ -1,0 +1,69 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_digit_ascii",
+  "customs": {
+    "ss_digit_ascii": {
+      "moduleKind": "vhdl",
+      "name": "ss_digit_ascii",
+      "description": "One decimal or HEX nibble to ASCII; invalid input gives question mark.",
+      "fileName": "ss_digit_ascii.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_digit_ascii is\n  generic (HEX_MODE:natural range 0 to 1:=0; UPPERCASE:natural range 0 to 1:=1);\n  port (digit:in std_logic_vector(3 downto 0); character:out std_logic_vector(7 downto 0); valid:out std_logic);\nend entity;\narchitecture rtl of ss_digit_ascii is begin\n  process(digit)\n    variable value:natural range 0 to 15;\n  begin\n    character<=x\"3F\"; valid<='0';\n    if not is_x(digit) then\n      value:=to_integer(unsigned(digit));\n      if value<10 then character<=std_logic_vector(to_unsigned(48+value,8)); valid<='1';\n      elsif HEX_MODE=1 then\n        if UPPERCASE=1 then character<=std_logic_vector(to_unsigned(65+value-10,8));\n        else character<=std_logic_vector(to_unsigned(97+value-10,8)); end if;\n        valid<='1';\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "digit",
+          "dir": "in",
+          "width": 4,
+          "dataType": "std_logic_vector",
+          "left": 3,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "3",
+          "rightExpr": "0"
+        },
+        {
+          "name": "character",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "7",
+          "rightExpr": "0"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "HEX_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        },
+        {
+          "name": "UPPERCASE",
+          "dataType": "natural",
+          "defaultExpr": "1",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 1
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "DIGIT_ASCII",
+      "displayName": "Digit to ASCII",
+      "defaultInputs": {},
+      "inputNotes": "HEX_MODE=0 ยอมรับ 0–9, HEX_MODE=1 ยอมรับ A–F ด้วย · UPPERCASE เลือกตัวพิมพ์ · invalid ให้ ASCII ?"
+    }
+  }
+}

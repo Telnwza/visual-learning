@@ -1,0 +1,459 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_mmss_timer",
+  "customs": {
+    "ss_mmss_timer": {
+      "moduleKind": "vhdl",
+      "name": "ss_mmss_timer",
+      "description": "MM:SS up/down: reset 00:00; load stops; invalid load holds time and pulses load_error. reset > load > pause > start > tick. Stop at endpoint. Resume waits a full interval + one pipeline clock; en=0 resets fractional timing.",
+      "fileName": "ss_mmss_timer.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_mmss_timer is\n  generic (MAX_MINUTES:natural range 0 to 99:=99; TICKS_PER_SECOND:positive range 1 to 2147483647:=50000000);\n  port (clk,rst,en,start,pause,load,down:in std_logic;\n    load_minutes:in std_logic_vector(6 downto 0); load_seconds:in std_logic_vector(5 downto 0);\n    minutes:out std_logic_vector(6 downto 0); seconds:out std_logic_vector(5 downto 0);\n    digits:out std_logic_vector(15 downto 0); running,terminal,done,valid,load_error:out std_logic);\nend entity;\narchitecture rtl of ss_mmss_timer is\n  signal minute_value:std_logic_vector(6 downto 0);\n  signal second_value:std_logic_vector(5 downto 0);\n  signal minute_bcd,second_bcd:std_logic_vector(63 downto 0);\n  signal active,event_done,event_error:std_logic:='0';\n  signal at_end,load_ok,load_time,tick_reset,tick_enable,tick,step,minute_step,counter_down:std_logic;\n  signal minute_valid,second_valid,minute_digits_valid,second_digits_valid:std_logic;\nbegin\n  minutes<=minute_value; seconds<=second_value; digits<=minute_bcd(7 downto 0) & second_bcd(7 downto 0);\n  running<=active; terminal<=at_end; done<=event_done; load_error<=event_error;\n  valid<=minute_valid and second_valid and minute_digits_valid and second_digits_valid;\n  load_ok<='1' when not is_x(load_minutes & load_seconds) and unsigned(load_minutes)<=MAX_MINUTES and unsigned(load_seconds)<=59 else '0';\n  load_time<=load and load_ok;\n  counter_down<=down and not rst;\n  at_end<='1' when (down='1' and unsigned(minute_value)=0 and unsigned(second_value)=0) or\n    (down='0' and unsigned(minute_value)=MAX_MINUTES and unsigned(second_value)=59) else '0';\n  tick_reset<=rst or load or start or pause or not en;\n  tick_enable<=active and en and not at_end;\n  step<=tick and active and en and not at_end and not rst and not load and not pause and not start;\n  minute_step<='1' when step='1' and ((down='0' and unsigned(second_value)=59) or (down='1' and unsigned(second_value)=0)) else '0';\n  second_tick:entity work.ss_tick generic map(DIVISOR=>TICKS_PER_SECOND)\n    port map(clk=>clk,rst=>tick_reset,en=>tick_enable,tick=>tick);\n  minute_counter:entity work.ss_counter generic map(WIDTH=>7,WRAP=>0)\n    port map(clk=>clk,rst=>rst,en=>minute_step,load=>load_time,down=>counter_down,minimum=>\"0000000\",\n      maximum=>std_logic_vector(to_unsigned(MAX_MINUTES,7)),load_value=>load_minutes,q=>minute_value,valid=>minute_valid,terminal=>open,wrapped=>open);\n  second_counter:entity work.ss_counter generic map(WIDTH=>6,WRAP=>1)\n    port map(clk=>clk,rst=>rst,en=>step,load=>load_time,down=>counter_down,minimum=>\"000000\",maximum=>\"111011\",\n      load_value=>load_seconds,q=>second_value,valid=>second_valid,terminal=>open,wrapped=>open);\n  minute_format:entity work.ss_bin_to_bcd generic map(WIDTH=>7,DIGITS=>2)\n    port map(d=>minute_value,bcd_lo=>minute_bcd,bcd_hi=>open,negative=>open,overflow=>open,valid=>minute_digits_valid);\n  second_format:entity work.ss_bin_to_bcd generic map(WIDTH=>6,DIGITS=>2)\n    port map(d=>second_value,bcd_lo=>second_bcd,bcd_hi=>open,negative=>open,overflow=>open,valid=>second_digits_valid);\n  process(clk)\n  begin\n    if rising_edge(clk) then\n      event_done<='0'; event_error<='0';\n      if rst='1' then active<='0';\n      elsif load='1' then active<='0'; if load_ok/='1' then event_error<='1'; end if;\n      elsif pause='1' then active<='0';\n      elsif start='1' then\n        if at_end='1' then active<='0'; event_done<='1'; else active<='1'; end if;\n      elsif active='1' then\n        if at_end='1' or (step='1' and ((down='1' and unsigned(minute_value)=0 and unsigned(second_value)=1) or\n          (down='0' and unsigned(minute_value)=MAX_MINUTES and unsigned(second_value)=58))) then active<='0'; event_done<='1'; end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "start",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "pause",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "load",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "down",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "load_minutes",
+          "dir": "in",
+          "width": 7,
+          "dataType": "std_logic_vector",
+          "left": 6,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "6",
+          "rightExpr": "0"
+        },
+        {
+          "name": "load_seconds",
+          "dir": "in",
+          "width": 6,
+          "dataType": "std_logic_vector",
+          "left": 5,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "5",
+          "rightExpr": "0"
+        },
+        {
+          "name": "minutes",
+          "dir": "out",
+          "width": 7,
+          "dataType": "std_logic_vector",
+          "left": 6,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "6",
+          "rightExpr": "0"
+        },
+        {
+          "name": "seconds",
+          "dir": "out",
+          "width": 6,
+          "dataType": "std_logic_vector",
+          "left": 5,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "5",
+          "rightExpr": "0"
+        },
+        {
+          "name": "digits",
+          "dir": "out",
+          "width": 16,
+          "dataType": "std_logic_vector",
+          "left": 15,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "15",
+          "rightExpr": "0"
+        },
+        {
+          "name": "running",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "terminal",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "done",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "load_error",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "MAX_MINUTES",
+          "dataType": "natural",
+          "defaultExpr": "99",
+          "minExpr": "0",
+          "maxExpr": "99",
+          "defaultValue": 99
+        },
+        {
+          "name": "TICKS_PER_SECOND",
+          "dataType": "positive",
+          "defaultExpr": "50000000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000000
+        }
+      ],
+      "dependencies": [
+        "ss_tick",
+        "ss_counter",
+        "ss_bin_to_bcd"
+      ],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "MMSS_TIMER",
+      "inputNotes": "MM:SS up/down: reset 00:00; load stops; invalid load holds time and pulses load_error. reset > load > pause > start > tick. Stop at endpoint. Resume waits a full interval + one pipeline clock; en=0 resets fractional timing.",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "start": 0,
+        "pause": 0,
+        "load": 0,
+        "down": 0,
+        "load_minutes": 0,
+        "load_seconds": 0
+      }
+    },
+    "ss_tick": {
+      "moduleKind": "vhdl",
+      "name": "ss_tick",
+      "description": "One tick every DIVISOR enabled rising edges; reset clears phase; DIVISOR=1 gives an event each enabled edge.",
+      "fileName": "ss_tick.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_tick is\n  generic (DIVISOR:positive range 1 to 2147483647:=50000000);\n  port (clk,rst,en:in std_logic; tick:out std_logic);\nend entity;\narchitecture rtl of ss_tick is\n  signal count:natural range 0 to DIVISOR-1:=0;\n  signal event_tick:std_logic:='0';\nbegin\n  tick <= event_tick;\n  process(clk) begin\n    if rising_edge(clk) then\n      event_tick<='0';\n      if rst='1' then count<=0;\n      elsif en='1' then\n        if count=DIVISOR-1 then count<=0; event_tick<='1';\n        else count<=count+1; end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "tick",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "DIVISOR",
+          "dataType": "positive",
+          "defaultExpr": "50000000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000000
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "TICK",
+      "displayName": "Tick Generator",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1
+      },
+      "inputNotes": "50 MHz / DIVISOR = ความถี่ tick · DIVISOR=50000000 ได้ 1 Hz · ใช้ tick ต่อ en ของโมดูลที่ใช้ clk หลักร่วมกัน"
+    },
+    "ss_counter": {
+      "moduleKind": "vhdl",
+      "name": "ss_counter",
+      "description": "Inclusive unsigned bounds; reset → load → enable; WRAP chooses wrap or stop.",
+      "fileName": "ss_counter.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_counter is\n  generic (WIDTH:positive range 1 to 64:=8; WRAP:natural range 0 to 1:=1);\n  port (clk,rst,en,load,down:in std_logic;\n    minimum,maximum,load_value:in std_logic_vector(WIDTH-1 downto 0);\n    q:out std_logic_vector(WIDTH-1 downto 0);\n    valid,terminal,wrapped:out std_logic);\nend entity;\narchitecture rtl of ss_counter is\n  signal value:unsigned(WIDTH-1 downto 0):=(others=>'0');\n  signal wrap_event:std_logic:='0';\nbegin\n  q <= std_logic_vector(value);\n  valid <= '1' when unsigned(minimum)<=unsigned(maximum) and value>=unsigned(minimum) and value<=unsigned(maximum) else '0';\n  terminal <= '1' when unsigned(minimum)<=unsigned(maximum) and\n    ((down='0' and value=unsigned(maximum)) or (down='1' and value=unsigned(minimum))) else '0';\n  wrapped <= wrap_event;\n  process(clk)\n    variable lo,hi,first:unsigned(WIDTH-1 downto 0);\n  begin\n    if rising_edge(clk) then\n      lo:=unsigned(minimum); hi:=unsigned(maximum);\n      first:=lo; if down='1' then first:=hi; end if;\n      wrap_event<='0';\n      if rst='1' then value<=first;\n      elsif lo<=hi then\n        if load='1' then\n          if unsigned(load_value)<lo then value<=lo;\n          elsif unsigned(load_value)>hi then value<=hi;\n          else value<=unsigned(load_value); end if;\n        elsif en='1' then\n          if value<lo or value>hi then value<=first;\n          elsif (down='0' and value=hi) or (down='1' and value=lo) then\n            if WRAP=1 then value<=first; wrap_event<='1'; end if;\n          elsif down='1' then value<=value-1;\n          else value<=value+1; end if;\n        end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "load",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "down",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "minimum",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "maximum",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "load_value",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "q",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "terminal",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "wrapped",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "WRAP",
+          "dataType": "natural",
+          "defaultExpr": "1",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 1
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "COUNTER",
+      "displayName": "Synchronous Counter",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "load": 0,
+        "down": 0,
+        "minimum": 0,
+        "load_value": 0
+      },
+      "inputNotes": "ต่อ clk หลัก · maximum ต่อ CONST · down=0 ขึ้น/1 ลง · rst เลือกต้นช่วงตามทิศทาง · load clamp เข้าช่วงและทำงานแม้ en=0"
+    },
+    "ss_bin_to_bcd": {
+      "moduleKind": "vhdl",
+      "name": "ss_bin_to_bcd",
+      "description": "Full 20-digit unsigned magnitude, with signed input and configured digit-count overflow.",
+      "fileName": "ss_bin_to_bcd.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_bin_to_bcd is\n  generic (WIDTH:positive range 1 to 64:=8; DIGITS:positive range 1 to 20:=3; SIGNED_MODE:natural range 0 to 1:=0);\n  port (d:in std_logic_vector(WIDTH-1 downto 0);\n    bcd_lo:out std_logic_vector(63 downto 0); bcd_hi:out std_logic_vector(15 downto 0);\n    negative,valid,overflow:out std_logic);\nend entity;\narchitecture rtl of ss_bin_to_bcd is begin\n  process(d)\n    variable magnitude:unsigned(WIDTH-1 downto 0);\n    variable digits_value:unsigned(79 downto 0);\n    variable too_large:boolean;\n  begin\n    digits_value:=(others=>'0'); negative<='0'; valid<='0'; overflow<='0';\n    if not is_x(d) then\n      magnitude:=unsigned(d);\n      if SIGNED_MODE=1 and d(WIDTH-1)='1' then magnitude:=unsigned(-signed(d)); negative<='1'; end if;\n      for bit_index in WIDTH-1 downto 0 loop\n        for digit in 0 to 19 loop\n          if digits_value(4*digit+3 downto 4*digit)>=5 then\n            digits_value(4*digit+3 downto 4*digit):=digits_value(4*digit+3 downto 4*digit)+3;\n          end if;\n        end loop;\n        digits_value:=shift_left(digits_value,1); digits_value(0):=magnitude(bit_index);\n      end loop;\n      too_large:=false;\n      for digit in DIGITS to 19 loop if digits_value(4*digit+3 downto 4*digit)/=0 then too_large:=true; end if; end loop;\n      if too_large then overflow<='1'; else valid<='1'; end if;\n    end if;\n    bcd_lo<=std_logic_vector(digits_value(63 downto 0)); bcd_hi<=std_logic_vector(digits_value(79 downto 64));\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "bcd_lo",
+          "dir": "out",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "63",
+          "rightExpr": "0"
+        },
+        {
+          "name": "bcd_hi",
+          "dir": "out",
+          "width": 16,
+          "dataType": "std_logic_vector",
+          "left": 15,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "15",
+          "rightExpr": "0"
+        },
+        {
+          "name": "negative",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "overflow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "DIGITS",
+          "dataType": "positive",
+          "defaultExpr": "3",
+          "minExpr": "1",
+          "maxExpr": "20",
+          "defaultValue": 3
+        },
+        {
+          "name": "SIGNED_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "BIN_TO_BCD",
+      "displayName": "BIN to BCD",
+      "defaultInputs": {},
+      "inputNotes": "bcd_lo 64 bit = หลัก 0–15, bcd_hi 16 bit = หลัก 16–19 · หลักหน่วยอยู่ bits 3:0 · DIGITS บอกจำนวนหลักที่ยอมรับ · overflow ไม่ตัดผลเต็ม"
+    }
+  }
+}

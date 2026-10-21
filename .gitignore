@@ -26,6 +26,9 @@ temp/
 node_modules/
 dist/
 
+# Local snapshots kept outside the published site
+/archive/
+
 # Python local server/cache artifacts
 __pycache__/
 *.py[cod]

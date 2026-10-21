@@ -1,0 +1,66 @@
+format schematic-text 1
+circuit ss_fsm_template
+# IDLE=00, ACTIVE=01, DONE=10; 11 recovers even with en=0.
+# Synchronous reset > cancel > state-specific events; all storage shares clk.
+input clk, rst, en, start, finish, cancel
+output state[2], active, done, invalid
+part state_bit0 DFF enable=true reset=false preset=false
+part state_bit1 DFF enable=true reset=false preset=false
+part idle_code CONST width=2 value="0"
+part active_code CONST width=2 value="1"
+part done_code CONST width=2 value="2"
+part invalid_code CONST width=2 value="3"
+part idle_state COMP width=2 pinMode=bus
+part active_state COMP width=2 pinMode=bus
+part done_state COMP width=2 pinMode=bus
+part invalid_state COMP width=2 pinMode=bus
+part enable_storage OR inputs=3
+part force_idle OR inputs=3
+part permit_state NOT
+part startable OR
+part start_active AND
+part keep_active AND
+part finish_active AND
+part keep_done AND
+part not_finish NOT
+part not_start NOT
+part next_active OR
+part next_done OR
+part active_bit AND
+part done_bit AND
+part state_bus BUF width=2
+part bit0 BUSTAP bit=0 nbit=1 mode=merge
+part bit1 BUSTAP bit=1 nbit=1 mode=merge
+connect clk -> state_bit0.clk, state_bit1.clk
+connect rst -> force_idle.i2, enable_storage.i2
+connect idle_code.o -> idle_state.b
+connect active_code.o -> active_state.b
+connect done_code.o -> done_state.b
+connect invalid_code.o -> invalid_state.b
+connect active_state.eq -> active, keep_active.i0, finish_active.i0
+connect done_state.eq -> done, startable.i1, keep_done.i0
+connect invalid_state.eq -> invalid, enable_storage.i1, force_idle.i1
+connect en -> enable_storage.i0
+connect enable_storage.o -> state_bit0.en, state_bit1.en
+connect cancel -> force_idle.i0
+connect force_idle.o -> permit_state.i0
+connect idle_state.eq -> startable.i0
+connect startable.o -> start_active.i0
+connect start -> start_active.i1, not_start.i0
+connect finish -> not_finish.i0, finish_active.i1
+connect not_finish.o -> keep_active.i1
+connect not_start.o -> keep_done.i1
+connect start_active.o -> next_active.i0
+connect keep_active.o -> next_active.i1
+connect finish_active.o -> next_done.i0
+connect keep_done.o -> next_done.i1
+connect permit_state.o -> active_bit.i0, done_bit.i0
+connect next_active.o -> active_bit.i1
+connect next_done.o -> done_bit.i1
+connect active_bit.o -> state_bit0.d
+connect done_bit.o -> state_bit1.d
+connect state_bit0.q -> bit0.y
+connect state_bit1.q -> bit1.y
+connect bit0.d -> state_bus.i0
+connect bit1.d -> state_bus.i0
+connect state_bus.o -> state, idle_state.a, active_state.a, done_state.a, invalid_state.a

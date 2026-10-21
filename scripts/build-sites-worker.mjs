@@ -14,6 +14,7 @@ const sourceFiles = [
   "automata/automata-equation.js",
   "automata/practice-generator.js",
   "schematic2vhdl/index.html",
+  "schematic2vhdl-v2/index.html",
   "vectors/index.html",
   "logic-gates/index.html",
   "logic-gates/style.css",

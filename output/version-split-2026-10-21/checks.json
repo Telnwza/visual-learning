@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-21",
+  "githubMain": "a101f195790a4a833e98c271d1fda3a50b0807d3",
+  "originalSha256": "0452df7eb95cf168caf5feba26d3debf4012e96432bf3e0151e9cc2eda12ab32",
+  "v2Sha256": "e26706f1e83de5f4396d270adc7e7c90fd397bc2d5b86c9f0b3b76c79f33eae5",
+  "originalMatchesGithub": true,
+  "v2SourceMatchesPreSplitExceptVersionLabelAndStorage": true,
+  "tests": {
+    "original": {
+      "passed": 104,
+      "failed": 0,
+      "skipped": 0
+    },
+    "v2Application": {
+      "passed": 760,
+      "failed": 0,
+      "skipped": 0
+    },
+    "focusedIsolation": {
+      "passed": 4,
+      "failed": 0
+    },
+    "inactivePythonGenerator": {
+      "passed": 28,
+      "failed": 10,
+      "representativeFailureReproducedOnPreSplitSource": true
+    }
+  },
+  "browser": {
+    "sameOrigin": true,
+    "originalComponentCount": 8,
+    "v2ComponentCount": 9,
+    "separateTheme": true,
+    "v2DraftSurvivesReload": true,
+    "v2ModulePlacementAndSourceEditor": true,
+    "dashboardBothVersions": true
+  },
+  "build": {
+    "workerAssets": 19,
+    "originalRouteStatus": 200,
+    "v2RouteStatus": 200,
+    "deployed": false
+  },
+  "git": {
+    "head": "a101f195790a4a833e98c271d1fda3a50b0807d3",
+    "stagedDiff": [],
+    "committed": false,
+    "pushed": false
+  }
+}

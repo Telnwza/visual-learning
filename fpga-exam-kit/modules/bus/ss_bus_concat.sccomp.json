@@ -1,0 +1,74 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_bus_concat",
+  "customs": {
+    "ss_bus_concat": {
+      "moduleKind": "vhdl",
+      "name": "ss_bus_concat",
+      "description": "y=a & b; a occupies the upper bits; combined width is at most 64.",
+      "fileName": "ss_bus_concat.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_bus_concat is\n  generic (A_WIDTH:positive range 1 to 63:=8; B_WIDTH:positive range 1 to 64-A_WIDTH:=8);\n  port (a:in std_logic_vector(A_WIDTH-1 downto 0);\n    b:in std_logic_vector(B_WIDTH-1 downto 0);\n    y:out std_logic_vector(A_WIDTH+B_WIDTH-1 downto 0));\nend entity;\narchitecture rtl of ss_bus_concat is begin\n  y <= a & b;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "a",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "A_WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "b",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "B_WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 16,
+          "dataType": "std_logic_vector",
+          "left": 15,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "A_WIDTH+B_WIDTH-1",
+          "rightExpr": "0"
+        }
+      ],
+      "generics": [
+        {
+          "name": "A_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "63",
+          "defaultValue": 8
+        },
+        {
+          "name": "B_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64-A_WIDTH",
+          "defaultValue": 8
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "CONCAT",
+      "displayName": "Bus Concatenate",
+      "defaultInputs": {},
+      "inputNotes": "Combinational · A_WIDTH+B_WIDTH ≤ 64 · a อยู่ฝั่ง MSB, b อยู่ฝั่ง LSB"
+    }
+  }
+}

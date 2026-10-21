@@ -1,0 +1,557 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_button_input",
+  "customs": {
+    "ss_button_input": {
+      "moduleKind": "vhdl",
+      "name": "ss_button_input",
+      "description": "SYNC → DEBOUNCE → EDGE. q=pressed level; events follow debounced q by one clock. ACTIVE_LOW matches sync reset. Clock must run continuously.",
+      "fileName": "ss_button_input.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_button_input is\n  generic (STAGES:positive range 2 to 64:=2;\n    STABLE_CYCLES:positive range 1 to 2147483647:=500000;\n    CLOCK_HZ:positive range 1 to 2147483647:=50000000;\n    ACTIVE_LOW:natural range 0 to 1:=0; MODE:natural range 0 to 2:=0);\n  port (clk,rst,d:in std_logic; q,pressed,released,pulse:out std_logic);\nend entity;\narchitecture rtl of ss_button_input is\n  signal sampled,level:std_logic;\nbegin\n  synchronizer:entity work.ss_input_sync generic map(STAGES=>STAGES,RESET_LEVEL=>ACTIVE_LOW)\n    port map(clk=>clk,rst=>rst,d=>d,q=>sampled);\n  debounce:entity work.ss_input_debounce generic map(STABLE_CYCLES=>STABLE_CYCLES,CLOCK_HZ=>CLOCK_HZ,ACTIVE_LOW=>ACTIVE_LOW)\n    port map(clk=>clk,rst=>rst,d=>sampled,q=>level,pressed=>open,released=>open);\n  edges:entity work.ss_input_edge generic map(MODE=>MODE)\n    port map(clk=>clk,rst=>rst,d=>level,rise=>pressed,fall=>released,pulse=>pulse);\n  q<=level;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "q",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "pressed",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "released",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "pulse",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "STAGES",
+          "dataType": "positive",
+          "defaultExpr": "2",
+          "minExpr": "2",
+          "maxExpr": "64",
+          "defaultValue": 2
+        },
+        {
+          "name": "STABLE_CYCLES",
+          "dataType": "positive",
+          "defaultExpr": "500000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 500000
+        },
+        {
+          "name": "CLOCK_HZ",
+          "dataType": "positive",
+          "defaultExpr": "50000000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000000
+        },
+        {
+          "name": "ACTIVE_LOW",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        },
+        {
+          "name": "MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "2",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [
+        "ss_input_sync",
+        "ss_input_debounce",
+        "ss_input_edge"
+      ],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "BUTTON_INPUT",
+      "inputNotes": "SYNC → DEBOUNCE → EDGE. q=pressed level; events follow debounced q by one clock. ACTIVE_LOW matches sync reset. Clock must run continuously.",
+      "defaultInputs": {
+        "rst": 0
+      }
+    },
+    "ss_alu": {
+      "moduleKind": "vhdl",
+      "name": "ss_alu",
+      "description": "opcode 0:+,1:-,2:*,3:/,4:AND,5:OR,6:XOR,7:NOT a. Idle enabled start captures operands; done pulses, busy starts ignored. result_hi=multiply high or divide remainder. en pauses division.",
+      "fileName": "ss_alu.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_alu is\n  generic (WIDTH:positive range 1 to 64:=8; SIGNED_MODE:natural range 0 to 1:=0);\n  port (clk,rst,en,start:in std_logic; opcode:in std_logic_vector(2 downto 0);\n    a,b:in std_logic_vector(WIDTH-1 downto 0); cin:in std_logic;\n    y,result_hi:out std_logic_vector(WIDTH-1 downto 0);\n    busy,done,valid,carry,borrow,overflow,divide_by_zero,zero,negative,invalid_op:out std_logic);\nend entity;\narchitecture rtl of ss_alu is\n  type words is array(0 to 7) of std_logic_vector(WIDTH-1 downto 0);\n  signal values:words;\n  signal add_carry,add_overflow,add_zero,add_negative:std_logic;\n  signal sub_borrow,sub_overflow,sub_zero,sub_negative:std_logic;\n  signal mul_hi:std_logic_vector(WIDTH-1 downto 0);\n  signal mul_overflow,mul_zero,mul_negative:std_logic;\n  signal div_a,div_b,div_q,div_r:std_logic_vector(WIDTH-1 downto 0):=(others=>'0');\n  signal div_start,div_done,div_valid,div_error,div_overflow,div_zero,div_negative:std_logic:='0';\n  signal active,event_done,result_valid,flag_carry,flag_borrow,flag_overflow,flag_divide,flag_negative,flag_invalid:std_logic:='0';\n  signal flag_zero:std_logic:='1';\n  signal result_value,result_upper:std_logic_vector(WIDTH-1 downto 0):=(others=>'0');\nbegin\n  addition:entity work.ss_add_sub generic map(WIDTH=>WIDTH,SIGNED_MODE=>SIGNED_MODE,SUBTRACT=>0)\n    port map(a=>a,b=>b,cin=>cin,y=>values(0),carry=>add_carry,borrow=>open,overflow=>add_overflow,zero=>add_zero,negative=>add_negative);\n  subtraction:entity work.ss_add_sub generic map(WIDTH=>WIDTH,SIGNED_MODE=>SIGNED_MODE,SUBTRACT=>1)\n    port map(a=>a,b=>b,cin=>cin,y=>values(1),carry=>open,borrow=>sub_borrow,overflow=>sub_overflow,zero=>sub_zero,negative=>sub_negative);\n  multiplication:entity work.ss_multiply generic map(WIDTH=>WIDTH,SIGNED_MODE=>SIGNED_MODE)\n    port map(a=>a,b=>b,result_lo=>values(2),result_hi=>mul_hi,overflow=>mul_overflow,zero=>mul_zero,negative=>mul_negative);\n  division:entity work.ss_divide generic map(WIDTH=>WIDTH,SIGNED_MODE=>SIGNED_MODE)\n    port map(clk=>clk,rst=>rst,en=>en,start=>div_start,a=>div_a,b=>div_b,quotient=>div_q,remainder=>div_r,\n      busy=>open,done=>div_done,valid=>div_valid,divide_by_zero=>div_error,overflow=>div_overflow,zero=>div_zero,negative=>div_negative);\n  values(3)<=div_q;\n  logic_and:entity work.ss_bitwise generic map(WIDTH=>WIDTH,OPERATION=>0) port map(a=>a,b=>b,y=>values(4),zero=>open);\n  logic_or:entity work.ss_bitwise generic map(WIDTH=>WIDTH,OPERATION=>1) port map(a=>a,b=>b,y=>values(5),zero=>open);\n  logic_xor:entity work.ss_bitwise generic map(WIDTH=>WIDTH,OPERATION=>2) port map(a=>a,b=>b,y=>values(6),zero=>open);\n  logic_not:entity work.ss_bitwise generic map(WIDTH=>WIDTH,OPERATION=>6) port map(a=>a,b=>b,y=>values(7),zero=>open);\n  y<=result_value; result_hi<=result_upper; busy<=active; done<=event_done; valid<=result_valid;\n  carry<=flag_carry; borrow<=flag_borrow; overflow<=flag_overflow; divide_by_zero<=flag_divide;\n  zero<=flag_zero; negative<=flag_negative; invalid_op<=flag_invalid;\n  process(clk)\n    variable operation:natural range 0 to 7;\n  begin\n    if rising_edge(clk) then\n      event_done<='0'; div_start<='0';\n      if rst='1' then\n        active<='0'; result_valid<='0'; result_value<=(others=>'0'); result_upper<=(others=>'0');\n        div_a<=(others=>'0'); div_b<=(others=>'0');\n        flag_carry<='0'; flag_borrow<='0'; flag_overflow<='0'; flag_divide<='0'; flag_negative<='0'; flag_invalid<='0'; flag_zero<='1';\n      elsif active='1' then\n        if div_done='1' then\n          active<='0'; event_done<='1'; result_valid<=div_valid; result_value<=div_q; result_upper<=div_r;\n          flag_overflow<=div_overflow; flag_divide<=div_error; flag_zero<=div_zero; flag_negative<=div_negative;\n        end if;\n      elsif start='1' and en='1' then\n        result_valid<='0'; flag_carry<='0'; flag_borrow<='0'; flag_overflow<='0'; flag_divide<='0'; flag_invalid<='0';\n        if is_x(opcode) then flag_invalid<='1'; event_done<='1';\n        else\n          operation:=to_integer(unsigned(opcode));\n          if operation=3 then div_a<=a; div_b<=b; div_start<='1'; active<='1';\n          else\n            result_value<=values(operation); result_upper<=(others=>'0'); result_valid<='1'; event_done<='1';\n            flag_zero<='0'; if unsigned(values(operation))=0 then flag_zero<='1'; end if;\n            flag_negative<='0'; if SIGNED_MODE=1 then flag_negative<=values(operation)(WIDTH-1); end if;\n            case operation is\n              when 0 => flag_carry<=add_carry; flag_overflow<=add_overflow; flag_zero<=add_zero; flag_negative<=add_negative;\n              when 1 => flag_borrow<=sub_borrow; flag_overflow<=sub_overflow; flag_zero<=sub_zero; flag_negative<=sub_negative;\n              when 2 => result_upper<=mul_hi; flag_overflow<=mul_overflow; flag_zero<=mul_zero; flag_negative<=mul_negative;\n              when others => null;\n            end case;\n          end if;\n        end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "start",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "opcode",
+          "dir": "in",
+          "width": 3,
+          "dataType": "std_logic_vector",
+          "left": 2,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "2",
+          "rightExpr": "0"
+        },
+        {
+          "name": "a",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "b",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "cin",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "result_hi",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "busy",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "done",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "carry",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "borrow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "overflow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "divide_by_zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "negative",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "invalid_op",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "SIGNED_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [
+        "ss_add_sub",
+        "ss_multiply",
+        "ss_divide",
+        "ss_bitwise"
+      ],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "ALU",
+      "inputNotes": "opcode 0:+,1:-,2:*,3:/,4:AND,5:OR,6:XOR,7:NOT a. Idle enabled start captures operands; done pulses, busy starts ignored. result_hi=multiply high or divide remainder. en pauses division.",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "start": 0,
+        "cin": 0
+      }
+    },
+    "ss_fsm_template": {
+      "moduleKind": "vhdl",
+      "name": "ss_fsm_template",
+      "description": "IDLE(0) → ACTIVE(1) on start → DONE(2) on finish. cancel wins; DONE restarts on start. en holds; invalid 3 recovers even disabled. done is a level. Editable schematic is supplied separately.",
+      "fileName": "ss_fsm_template.vhd",
+      "vhdl": "-- Exported from ss_fsm_template.sch.txt; regenerate after editing that template.\nlibrary IEEE;\nuse IEEE.STD_LOGIC_1164.ALL;\nuse IEEE.NUMERIC_STD.ALL;\n\n-- Generated by Schematic Studio  (target: Xilinx Spartan-7 / Vivado)\n-- Schematic: ss_fsm_template\n\nentity ss_fsm_template is\n  Port (\n    clk : in  STD_LOGIC;\n    rst : in  STD_LOGIC;\n    en : in  STD_LOGIC;\n    start : in  STD_LOGIC;\n    finish : in  STD_LOGIC;\n    cancel : in  STD_LOGIC;\n    state : out STD_LOGIC_VECTOR(1 downto 0);\n    active : out STD_LOGIC;\n    done : out STD_LOGIC;\n    invalid : out STD_LOGIC\n  );\nend ss_fsm_template;\n\narchitecture Behavioral of ss_fsm_template is\n  signal idle_state_eq, active_state_eq, done_state_eq, invalid_state_eq, enable_storage_o, force_idle_o, permit_state_o, startable_o, start_active_o, keep_active_o, finish_active_o, keep_done_o, not_finish_o, not_start_o, next_active_o, next_done_o, active_bit_o, done_bit_o : STD_LOGIC;\n  signal state_bit0_q : STD_LOGIC := '0';\n  signal state_bit1_q : STD_LOGIC := '0';\n  signal state_bus_o : STD_LOGIC_VECTOR(1 downto 0);\n  signal bus_s : STD_LOGIC_VECTOR(1 downto 0);\nbegin\n\n  -- combinational logic\n  idle_state_eq <= '1' when state_bus_o = std_logic_vector'(\"00\") else '0';\n  active_state_eq <= '1' when state_bus_o = std_logic_vector'(\"01\") else '0';\n  done_state_eq <= '1' when state_bus_o = std_logic_vector'(\"10\") else '0';\n  invalid_state_eq <= '1' when state_bus_o = std_logic_vector'(\"11\") else '0';\n  enable_storage_o <= en or invalid_state_eq or rst;\n  force_idle_o <= cancel or invalid_state_eq or rst;\n  permit_state_o <= not force_idle_o;\n  startable_o <= idle_state_eq or done_state_eq;\n  start_active_o <= startable_o and start;\n  keep_active_o <= active_state_eq and not_finish_o;\n  finish_active_o <= active_state_eq and finish;\n  keep_done_o <= done_state_eq and not_start_o;\n  not_finish_o <= not finish;\n  not_start_o <= not start;\n  next_active_o <= start_active_o or keep_active_o;\n  next_done_o <= finish_active_o or keep_done_o;\n  active_bit_o <= permit_state_o and next_active_o;\n  done_bit_o <= permit_state_o and next_done_o;\n  state_bus_o <= bus_s;\n\n  -- sequential logic (flip-flops)\n  process(clk)\n  begin\n    if rising_edge(clk) then\n      if enable_storage_o = '1' then\n        state_bit0_q  <= active_bit_o;\n      end if;\n    end if;\n  end process;\n  process(clk)\n  begin\n    if rising_edge(clk) then\n      if enable_storage_o = '1' then\n        state_bit1_q  <= done_bit_o;\n      end if;\n    end if;\n  end process;\n\n  -- output drivers\n  state <= state_bus_o;\n  active <= active_state_eq;\n  done <= done_state_eq;\n  invalid <= invalid_state_eq;\n  bus_s(0) <= state_bit0_q;\n  bus_s(1) <= state_bit1_q;\n\nend Behavioral;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "start",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "finish",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "cancel",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "state",
+          "dir": "out",
+          "width": 2,
+          "dataType": "std_logic_vector",
+          "left": 1,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "active",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "done",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "invalid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "FSM",
+      "inputNotes": "IDLE(0) → ACTIVE(1) on start → DONE(2) on finish. cancel wins; DONE restarts on start. en holds; invalid 3 recovers even disabled. done is a level. Editable schematic is supplied separately.",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "start": 0,
+        "finish": 0,
+        "cancel": 0
+      }
+    },
+    "ss_mmss_timer": {
+      "moduleKind": "vhdl",
+      "name": "ss_mmss_timer",
+      "description": "MM:SS up/down: reset 00:00; load stops; invalid load holds time and pulses load_error. reset > load > pause > start > tick. Stop at endpoint. Resume waits a full interval + one pipeline clock; en=0 resets fractional timing.",
+      "fileName": "ss_mmss_timer.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_mmss_timer is\n  generic (MAX_MINUTES:natural range 0 to 99:=99; TICKS_PER_SECOND:positive range 1 to 2147483647:=50000000);\n  port (clk,rst,en,start,pause,load,down:in std_logic;\n    load_minutes:in std_logic_vector(6 downto 0); load_seconds:in std_logic_vector(5 downto 0);\n    minutes:out std_logic_vector(6 downto 0); seconds:out std_logic_vector(5 downto 0);\n    digits:out std_logic_vector(15 downto 0); running,terminal,done,valid,load_error:out std_logic);\nend entity;\narchitecture rtl of ss_mmss_timer is\n  signal minute_value:std_logic_vector(6 downto 0);\n  signal second_value:std_logic_vector(5 downto 0);\n  signal minute_bcd,second_bcd:std_logic_vector(63 downto 0);\n  signal active,event_done,event_error:std_logic:='0';\n  signal at_end,load_ok,load_time,tick_reset,tick_enable,tick,step,minute_step,counter_down:std_logic;\n  signal minute_valid,second_valid,minute_digits_valid,second_digits_valid:std_logic;\nbegin\n  minutes<=minute_value; seconds<=second_value; digits<=minute_bcd(7 downto 0) & second_bcd(7 downto 0);\n  running<=active; terminal<=at_end; done<=event_done; load_error<=event_error;\n  valid<=minute_valid and second_valid and minute_digits_valid and second_digits_valid;\n  load_ok<='1' when not is_x(load_minutes & load_seconds) and unsigned(load_minutes)<=MAX_MINUTES and unsigned(load_seconds)<=59 else '0';\n  load_time<=load and load_ok;\n  counter_down<=down and not rst;\n  at_end<='1' when (down='1' and unsigned(minute_value)=0 and unsigned(second_value)=0) or\n    (down='0' and unsigned(minute_value)=MAX_MINUTES and unsigned(second_value)=59) else '0';\n  tick_reset<=rst or load or start or pause or not en;\n  tick_enable<=active and en and not at_end;\n  step<=tick and active and en and not at_end and not rst and not load and not pause and not start;\n  minute_step<='1' when step='1' and ((down='0' and unsigned(second_value)=59) or (down='1' and unsigned(second_value)=0)) else '0';\n  second_tick:entity work.ss_tick generic map(DIVISOR=>TICKS_PER_SECOND)\n    port map(clk=>clk,rst=>tick_reset,en=>tick_enable,tick=>tick);\n  minute_counter:entity work.ss_counter generic map(WIDTH=>7,WRAP=>0)\n    port map(clk=>clk,rst=>rst,en=>minute_step,load=>load_time,down=>counter_down,minimum=>\"0000000\",\n      maximum=>std_logic_vector(to_unsigned(MAX_MINUTES,7)),load_value=>load_minutes,q=>minute_value,valid=>minute_valid,terminal=>open,wrapped=>open);\n  second_counter:entity work.ss_counter generic map(WIDTH=>6,WRAP=>1)\n    port map(clk=>clk,rst=>rst,en=>step,load=>load_time,down=>counter_down,minimum=>\"000000\",maximum=>\"111011\",\n      load_value=>load_seconds,q=>second_value,valid=>second_valid,terminal=>open,wrapped=>open);\n  minute_format:entity work.ss_bin_to_bcd generic map(WIDTH=>7,DIGITS=>2)\n    port map(d=>minute_value,bcd_lo=>minute_bcd,bcd_hi=>open,negative=>open,overflow=>open,valid=>minute_digits_valid);\n  second_format:entity work.ss_bin_to_bcd generic map(WIDTH=>6,DIGITS=>2)\n    port map(d=>second_value,bcd_lo=>second_bcd,bcd_hi=>open,negative=>open,overflow=>open,valid=>second_digits_valid);\n  process(clk)\n  begin\n    if rising_edge(clk) then\n      event_done<='0'; event_error<='0';\n      if rst='1' then active<='0';\n      elsif load='1' then active<='0'; if load_ok/='1' then event_error<='1'; end if;\n      elsif pause='1' then active<='0';\n      elsif start='1' then\n        if at_end='1' then active<='0'; event_done<='1'; else active<='1'; end if;\n      elsif active='1' then\n        if at_end='1' or (step='1' and ((down='1' and unsigned(minute_value)=0 and unsigned(second_value)=1) or\n          (down='0' and unsigned(minute_value)=MAX_MINUTES and unsigned(second_value)=58))) then active<='0'; event_done<='1'; end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "start",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "pause",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "load",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "down",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "load_minutes",
+          "dir": "in",
+          "width": 7,
+          "dataType": "std_logic_vector",
+          "left": 6,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "6",
+          "rightExpr": "0"
+        },
+        {
+          "name": "load_seconds",
+          "dir": "in",
+          "width": 6,
+          "dataType": "std_logic_vector",
+          "left": 5,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "5",
+          "rightExpr": "0"
+        },
+        {
+          "name": "minutes",
+          "dir": "out",
+          "width": 7,
+          "dataType": "std_logic_vector",
+          "left": 6,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "6",
+          "rightExpr": "0"
+        },
+        {
+          "name": "seconds",
+          "dir": "out",
+          "width": 6,
+          "dataType": "std_logic_vector",
+          "left": 5,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "5",
+          "rightExpr": "0"
+        },
+        {
+          "name": "digits",
+          "dir": "out",
+          "width": 16,
+          "dataType": "std_logic_vector",
+          "left": 15,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "15",
+          "rightExpr": "0"
+        },
+        {
+          "name": "running",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "terminal",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "done",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "load_error",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "MAX_MINUTES",
+          "dataType": "natural",
+          "defaultExpr": "99",
+          "minExpr": "0",
+          "maxExpr": "99",
+          "defaultValue": 99
+        },
+        {
+          "name": "TICKS_PER_SECOND",
+          "dataType": "positive",
+          "defaultExpr": "50000000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000000
+        }
+      ],
+      "dependencies": [
+        "ss_tick",
+        "ss_counter",
+        "ss_bin_to_bcd"
+      ],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "MMSS_TIMER",
+      "inputNotes": "MM:SS up/down: reset 00:00; load stops; invalid load holds time and pulses load_error. reset > load > pause > start > tick. Stop at endpoint. Resume waits a full interval + one pipeline clock; en=0 resets fractional timing.",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "start": 0,
+        "pause": 0,
+        "load": 0,
+        "down": 0,
+        "load_minutes": 0,
+        "load_seconds": 0
+      }
+    }
+  }
+}

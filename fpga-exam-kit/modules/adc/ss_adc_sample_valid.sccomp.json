@@ -1,0 +1,86 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_adc_sample_valid",
+  "customs": {
+    "ss_adc_sample_valid": {
+      "moduleKind": "vhdl",
+      "name": "ss_adc_sample_valid",
+      "description": "Accepted lab completion convention: arm on CS high then capture on CS low. Inputs must share clk domain. clear_valid resets flags/sample only.",
+      "fileName": "ss_adc_sample_valid.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_adc_sample_valid is\n  generic (WIDTH:positive range 1 to 64:=12);\n  port (clk,clear_valid,cs:in std_logic; sample_in:in std_logic_vector(WIDTH-1 downto 0);\n    sample:out std_logic_vector(WIDTH-1 downto 0); sample_valid,valid:out std_logic);\nend entity;\narchitecture rtl of ss_adc_sample_valid is\n  signal seen_high:std_logic:='0'; signal result:std_logic_vector(WIDTH-1 downto 0):=(others=>'0');\n  signal result_valid,event:std_logic:='0';\nbegin\n  sample<=result; valid<=result_valid; sample_valid<=event;\n  process(clk)\n  begin\n    if rising_edge(clk) then\n      event<='0';\n      if clear_valid='1' then seen_high<='0'; result<=(others=>'0'); result_valid<='0';\n      elsif cs='1' then seen_high<='1';\n      elsif cs='0' and seen_high='1' then seen_high<='0'; result<=sample_in; event<='1'; result_valid<='1'; end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "clear_valid",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "cs",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "sample_in",
+          "dir": "in",
+          "width": 12,
+          "dataType": "std_logic_vector",
+          "left": 11,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "sample",
+          "dir": "out",
+          "width": 12,
+          "dataType": "std_logic_vector",
+          "left": 11,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "sample_valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "12",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 12
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "ADC_SAMPLE_VALID",
+      "inputNotes": "Accepted lab completion convention: arm on CS high then capture on CS low. Inputs must share clk domain. clear_valid resets flags/sample only.",
+      "defaultInputs": {
+        "clear_valid": 0
+      }
+    }
+  }
+}

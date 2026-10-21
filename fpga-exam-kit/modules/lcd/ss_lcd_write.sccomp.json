@@ -1,0 +1,128 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_lcd_write",
+  "customs": {
+    "ss_lcd_write": {
+      "moduleKind": "vhdl",
+      "name": "ss_lcd_write",
+      "description": "8-bit LCD byte transaction. start while busy ignored. Data/RS held; RW=0. Timing is in main-clock cycles.",
+      "fileName": "ss_lcd_write.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_lcd_write is\n  generic (SETUP_CYCLES:positive range 1 to 2147483647:=50000;\n    HIGH_CYCLES:positive range 1 to 2147483647:=50000;\n    HOLD_CYCLES:positive range 1 to 2147483647:=50000);\n  port (clk,rst,start:in std_logic; byte_in:in std_logic_vector(7 downto 0); rs_in:in std_logic;\n    data:out std_logic_vector(7 downto 0); e,rs,rw,busy,done:out std_logic);\nend entity;\narchitecture rtl of ss_lcd_write is\n  type states is (idle,setup,high_phase,hold_phase);\n  signal state:states:=idle;\n  signal count:natural range 0 to 2147483646:=0;\n  signal value:std_logic_vector(7 downto 0):=(others=>'0'); signal register_select:std_logic:='0';\nbegin\n  data<=value; rs<=register_select; rw<='0';\n  e<='1' when state=high_phase else '0'; busy<='0' when state=idle else '1';\n  process(clk)\n  begin\n    if rising_edge(clk) then\n      done<='0';\n      if rst='1' then state<=idle; count<=0; value<=(others=>'0'); register_select<='0';\n      else\n        case state is\n          when idle => if start='1' then value<=byte_in; register_select<=rs_in; count<=0; state<=setup; end if;\n          when setup => if count=SETUP_CYCLES-1 then count<=0; state<=high_phase; else count<=count+1; end if;\n          when high_phase => if count=HIGH_CYCLES-1 then count<=0; state<=hold_phase; else count<=count+1; end if;\n          when hold_phase => if count=HOLD_CYCLES-1 then count<=0; state<=idle; done<='1'; else count<=count+1; end if;\n        end case;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "start",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "byte_in",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "7",
+          "rightExpr": "0"
+        },
+        {
+          "name": "rs_in",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "data",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "7",
+          "rightExpr": "0"
+        },
+        {
+          "name": "e",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rs",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rw",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "busy",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "done",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "SETUP_CYCLES",
+          "dataType": "positive",
+          "defaultExpr": "50000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000
+        },
+        {
+          "name": "HIGH_CYCLES",
+          "dataType": "positive",
+          "defaultExpr": "50000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000
+        },
+        {
+          "name": "HOLD_CYCLES",
+          "dataType": "positive",
+          "defaultExpr": "50000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "LCD_WRITE",
+      "inputNotes": "8-bit LCD byte transaction. start while busy ignored. Data/RS held; RW=0. Timing is in main-clock cycles.",
+      "defaultInputs": {
+        "rst": 0,
+        "start": 0,
+        "rs_in": 0
+      }
+    }
+  }
+}

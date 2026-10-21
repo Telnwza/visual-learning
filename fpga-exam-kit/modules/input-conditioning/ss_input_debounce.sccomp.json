@@ -1,0 +1,87 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_input_debounce",
+  "customs": {
+    "ss_input_debounce": {
+      "moduleKind": "vhdl",
+      "name": "ss_input_debounce",
+      "description": "q=1 active/pressed · STABLE_CYCLES consecutive samples · pressed/released events last one clock",
+      "fileName": "ss_input_debounce.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_input_debounce is\n  generic (STABLE_CYCLES:positive range 1 to 2147483647:=500000; CLOCK_HZ:positive range 1 to 2147483647:=50000000; ACTIVE_LOW:natural range 0 to 1:=0);\n  port (clk,rst,d:in std_logic; q,pressed,released:out std_logic);\nend entity;\narchitecture rtl of ss_input_debounce is\n  signal level:std_logic:='0';\n  signal sample:std_logic;\n  signal count:natural range 0 to STABLE_CYCLES-1:=0;\n  signal press_event,release_event:std_logic:='0';\nbegin\n  sample <= not d when ACTIVE_LOW=1 else d;\n  q <= level; pressed <= press_event; released <= release_event;\n  process(clk) begin\n    if rising_edge(clk) then\n      press_event <= '0'; release_event <= '0';\n      if rst='1' then level <= '0'; count <= 0;\n      elsif sample=level then count <= 0;\n      elsif sample='0' or sample='1' then\n        if count=STABLE_CYCLES-1 then\n          level <= sample; count <= 0;\n          if sample='1' then press_event <= '1'; else release_event <= '1'; end if;\n        else count <= count+1;\n        end if;\n      else count <= 0;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "q",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "pressed",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "released",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "STABLE_CYCLES",
+          "dataType": "positive",
+          "defaultExpr": "500000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 500000
+        },
+        {
+          "name": "CLOCK_HZ",
+          "dataType": "positive",
+          "defaultExpr": "50000000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000000
+        },
+        {
+          "name": "ACTIVE_LOW",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "DEBOUNCE",
+      "displayName": "Debounce",
+      "inputNotes": "ต่อ d จาก Synchronizer (Reset level = ACTIVE_LOW เพื่อเริ่มที่ไม่กด) · clock ขาขึ้น · rst synchronous active high → inactive ไม่มี event · CLOCK_HZ ต้องตรงกับ clock ที่ต่อ; ไม่ได้สร้าง clock",
+      "defaultInputs": {
+        "rst": 0
+      }
+    }
+  }
+}

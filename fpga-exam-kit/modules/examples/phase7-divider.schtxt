@@ -1,0 +1,21 @@
+format schematic-text 1
+circuit signed_divider64
+input clk, rst, en, start, dividend[64], divisor[64]
+output quotient[64], remainder[64], busy, done, valid, divide_by_zero, overflow, zero, negative
+use "CUSTOM:ss_divide" as divider
+part arithmetic @divider generic_WIDTH=64 generic_SIGNED_MODE=1
+connect clk -> arithmetic.clk
+connect rst -> arithmetic.rst
+connect en -> arithmetic.en
+connect start -> arithmetic.start
+connect dividend -> arithmetic.a
+connect divisor -> arithmetic.b
+connect arithmetic.quotient -> quotient
+connect arithmetic.remainder -> remainder
+connect arithmetic.busy -> busy
+connect arithmetic.done -> done
+connect arithmetic.valid -> valid
+connect arithmetic.divide_by_zero -> divide_by_zero
+connect arithmetic.overflow -> overflow
+connect arithmetic.zero -> zero
+connect arithmetic.negative -> negative

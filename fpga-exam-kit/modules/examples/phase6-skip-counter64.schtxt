@@ -1,0 +1,23 @@
+format schematic-text 1
+circuit skip_3_and_7_64bit
+input clk, rst, en
+output result[64], valid, wrapped, blocked
+use "CUSTOM:ss_counter_skip" as skip_module
+part count @skip_module generic_WIDTH=64 generic_SKIP_COUNT=2
+part low GND
+part zero CONST value=0 width=64
+part limit CONST value=9 width=64
+part excluded3 CONST value=3 width=64
+part excluded7 CONST value=7 width=64
+connect clk -> count.clk
+connect rst -> count.rst
+connect en -> count.en
+connect low.o -> count.load, count.down
+connect zero.o -> count.minimum, count.load_value, count.skip_2, count.skip_3
+connect limit.o -> count.maximum
+connect excluded3.o -> count.skip_0
+connect excluded7.o -> count.skip_1
+connect count.q -> result
+connect count.valid -> valid
+connect count.wrapped -> wrapped
+connect count.blocked -> blocked

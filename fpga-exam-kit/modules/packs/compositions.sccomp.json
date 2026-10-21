@@ -1,0 +1,1470 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_button_input",
+  "customs": {
+    "ss_button_input": {
+      "moduleKind": "vhdl",
+      "name": "ss_button_input",
+      "description": "SYNC → DEBOUNCE → EDGE. q=pressed level; events follow debounced q by one clock. ACTIVE_LOW matches sync reset. Clock must run continuously.",
+      "fileName": "ss_button_input.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_button_input is\n  generic (STAGES:positive range 2 to 64:=2;\n    STABLE_CYCLES:positive range 1 to 2147483647:=500000;\n    CLOCK_HZ:positive range 1 to 2147483647:=50000000;\n    ACTIVE_LOW:natural range 0 to 1:=0; MODE:natural range 0 to 2:=0);\n  port (clk,rst,d:in std_logic; q,pressed,released,pulse:out std_logic);\nend entity;\narchitecture rtl of ss_button_input is\n  signal sampled,level:std_logic;\nbegin\n  synchronizer:entity work.ss_input_sync generic map(STAGES=>STAGES,RESET_LEVEL=>ACTIVE_LOW)\n    port map(clk=>clk,rst=>rst,d=>d,q=>sampled);\n  debounce:entity work.ss_input_debounce generic map(STABLE_CYCLES=>STABLE_CYCLES,CLOCK_HZ=>CLOCK_HZ,ACTIVE_LOW=>ACTIVE_LOW)\n    port map(clk=>clk,rst=>rst,d=>sampled,q=>level,pressed=>open,released=>open);\n  edges:entity work.ss_input_edge generic map(MODE=>MODE)\n    port map(clk=>clk,rst=>rst,d=>level,rise=>pressed,fall=>released,pulse=>pulse);\n  q<=level;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "q",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "pressed",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "released",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "pulse",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "STAGES",
+          "dataType": "positive",
+          "defaultExpr": "2",
+          "minExpr": "2",
+          "maxExpr": "64",
+          "defaultValue": 2
+        },
+        {
+          "name": "STABLE_CYCLES",
+          "dataType": "positive",
+          "defaultExpr": "500000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 500000
+        },
+        {
+          "name": "CLOCK_HZ",
+          "dataType": "positive",
+          "defaultExpr": "50000000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000000
+        },
+        {
+          "name": "ACTIVE_LOW",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        },
+        {
+          "name": "MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "2",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [
+        "ss_input_sync",
+        "ss_input_debounce",
+        "ss_input_edge"
+      ],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "BUTTON_INPUT",
+      "inputNotes": "SYNC → DEBOUNCE → EDGE. q=pressed level; events follow debounced q by one clock. ACTIVE_LOW matches sync reset. Clock must run continuously.",
+      "defaultInputs": {
+        "rst": 0
+      }
+    },
+    "ss_input_sync": {
+      "moduleKind": "vhdl",
+      "name": "ss_input_sync",
+      "description": "Single-bit level synchronizer · STAGES sampling edges · reset → sampling",
+      "fileName": "ss_input_sync.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_input_sync is\n  generic (STAGES:positive range 2 to 64:=2; RESET_LEVEL:natural range 0 to 1:=0);\n  port (clk,rst,d:in std_logic; q:out std_logic);\nend entity;\narchitecture rtl of ss_input_sync is\n  constant levels:std_logic_vector(0 to 1):=\"01\";\n  signal pipe:std_logic_vector(STAGES-1 downto 0):=(others=>levels(RESET_LEVEL));\n  attribute ASYNC_REG:string;\n  attribute ASYNC_REG of pipe:signal is \"TRUE\";\nbegin\n  q <= pipe(STAGES-1);\n  process(clk) begin\n    if rising_edge(clk) then\n      if rst='1' then pipe <= (others=>levels(RESET_LEVEL));\n      else pipe <= pipe(STAGES-2 downto 0) & d;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "q",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "STAGES",
+          "dataType": "positive",
+          "defaultExpr": "2",
+          "minExpr": "2",
+          "maxExpr": "64",
+          "defaultValue": 2
+        },
+        {
+          "name": "RESET_LEVEL",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "SYNC",
+      "displayName": "Input Synchronizer",
+      "inputNotes": "clock ขาขึ้น · rst synchronous active high · รับระดับ 1 bit เท่านั้น; pulse สั้นหรือ bus ต้องใช้วงจรถ่ายโอนอีกแบบ · simulation ไม่จำลอง metastability",
+      "defaultInputs": {
+        "rst": 0
+      }
+    },
+    "ss_input_debounce": {
+      "moduleKind": "vhdl",
+      "name": "ss_input_debounce",
+      "description": "q=1 active/pressed · STABLE_CYCLES consecutive samples · pressed/released events last one clock",
+      "fileName": "ss_input_debounce.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_input_debounce is\n  generic (STABLE_CYCLES:positive range 1 to 2147483647:=500000; CLOCK_HZ:positive range 1 to 2147483647:=50000000; ACTIVE_LOW:natural range 0 to 1:=0);\n  port (clk,rst,d:in std_logic; q,pressed,released:out std_logic);\nend entity;\narchitecture rtl of ss_input_debounce is\n  signal level:std_logic:='0';\n  signal sample:std_logic;\n  signal count:natural range 0 to STABLE_CYCLES-1:=0;\n  signal press_event,release_event:std_logic:='0';\nbegin\n  sample <= not d when ACTIVE_LOW=1 else d;\n  q <= level; pressed <= press_event; released <= release_event;\n  process(clk) begin\n    if rising_edge(clk) then\n      press_event <= '0'; release_event <= '0';\n      if rst='1' then level <= '0'; count <= 0;\n      elsif sample=level then count <= 0;\n      elsif sample='0' or sample='1' then\n        if count=STABLE_CYCLES-1 then\n          level <= sample; count <= 0;\n          if sample='1' then press_event <= '1'; else release_event <= '1'; end if;\n        else count <= count+1;\n        end if;\n      else count <= 0;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "q",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "pressed",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "released",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "STABLE_CYCLES",
+          "dataType": "positive",
+          "defaultExpr": "500000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 500000
+        },
+        {
+          "name": "CLOCK_HZ",
+          "dataType": "positive",
+          "defaultExpr": "50000000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000000
+        },
+        {
+          "name": "ACTIVE_LOW",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "DEBOUNCE",
+      "displayName": "Debounce",
+      "inputNotes": "ต่อ d จาก Synchronizer (Reset level = ACTIVE_LOW เพื่อเริ่มที่ไม่กด) · clock ขาขึ้น · rst synchronous active high → inactive ไม่มี event · CLOCK_HZ ต้องตรงกับ clock ที่ต่อ; ไม่ได้สร้าง clock",
+      "defaultInputs": {
+        "rst": 0
+      }
+    },
+    "ss_input_edge": {
+      "moduleKind": "vhdl",
+      "name": "ss_input_edge",
+      "description": "MODE selects pulse · rise/fall always detect transitions · first post-reset sample establishes history without an event",
+      "fileName": "ss_input_edge.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_input_edge is\n  generic (MODE:natural range 0 to 2:=0);\n  port (clk,rst,d:in std_logic; pulse,rise,fall:out std_logic);\nend entity;\narchitecture rtl of ss_input_edge is\n  signal previous,armed:std_logic:='0';\n  signal event_selected,event_rise,event_fall:std_logic:='0';\nbegin\n  pulse <= event_selected; rise <= event_rise; fall <= event_fall;\n  process(clk) begin\n    if rising_edge(clk) then\n      event_selected <= '0'; event_rise <= '0'; event_fall <= '0';\n      if rst='1' then previous <= '0'; armed <= '0';\n      elsif d='0' or d='1' then\n        if armed='1' then\n          if previous='0' and d='1' then\n            event_rise <= '1'; if MODE=0 or MODE=2 then event_selected <= '1'; end if;\n          elsif previous='1' and d='0' then\n            event_fall <= '1'; if MODE=1 or MODE=2 then event_selected <= '1'; end if;\n          end if;\n        end if;\n        previous <= d; armed <= '1';\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "pulse",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rise",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "fall",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "2",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "EDGE",
+      "displayName": "Edge Detector",
+      "inputNotes": "d ต้องอยู่ใน clock domain เดียวกัน · clock ขาขึ้น · rst synchronous active high · ทั้งสองขอบอาจให้ pulse สูงติดกันเมื่อ d เปลี่ยนทุก clock",
+      "defaultInputs": {
+        "rst": 0
+      }
+    },
+    "ss_alu": {
+      "moduleKind": "vhdl",
+      "name": "ss_alu",
+      "description": "opcode 0:+,1:-,2:*,3:/,4:AND,5:OR,6:XOR,7:NOT a. Idle enabled start captures operands; done pulses, busy starts ignored. result_hi=multiply high or divide remainder. en pauses division.",
+      "fileName": "ss_alu.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_alu is\n  generic (WIDTH:positive range 1 to 64:=8; SIGNED_MODE:natural range 0 to 1:=0);\n  port (clk,rst,en,start:in std_logic; opcode:in std_logic_vector(2 downto 0);\n    a,b:in std_logic_vector(WIDTH-1 downto 0); cin:in std_logic;\n    y,result_hi:out std_logic_vector(WIDTH-1 downto 0);\n    busy,done,valid,carry,borrow,overflow,divide_by_zero,zero,negative,invalid_op:out std_logic);\nend entity;\narchitecture rtl of ss_alu is\n  type words is array(0 to 7) of std_logic_vector(WIDTH-1 downto 0);\n  signal values:words;\n  signal add_carry,add_overflow,add_zero,add_negative:std_logic;\n  signal sub_borrow,sub_overflow,sub_zero,sub_negative:std_logic;\n  signal mul_hi:std_logic_vector(WIDTH-1 downto 0);\n  signal mul_overflow,mul_zero,mul_negative:std_logic;\n  signal div_a,div_b,div_q,div_r:std_logic_vector(WIDTH-1 downto 0):=(others=>'0');\n  signal div_start,div_done,div_valid,div_error,div_overflow,div_zero,div_negative:std_logic:='0';\n  signal active,event_done,result_valid,flag_carry,flag_borrow,flag_overflow,flag_divide,flag_negative,flag_invalid:std_logic:='0';\n  signal flag_zero:std_logic:='1';\n  signal result_value,result_upper:std_logic_vector(WIDTH-1 downto 0):=(others=>'0');\nbegin\n  addition:entity work.ss_add_sub generic map(WIDTH=>WIDTH,SIGNED_MODE=>SIGNED_MODE,SUBTRACT=>0)\n    port map(a=>a,b=>b,cin=>cin,y=>values(0),carry=>add_carry,borrow=>open,overflow=>add_overflow,zero=>add_zero,negative=>add_negative);\n  subtraction:entity work.ss_add_sub generic map(WIDTH=>WIDTH,SIGNED_MODE=>SIGNED_MODE,SUBTRACT=>1)\n    port map(a=>a,b=>b,cin=>cin,y=>values(1),carry=>open,borrow=>sub_borrow,overflow=>sub_overflow,zero=>sub_zero,negative=>sub_negative);\n  multiplication:entity work.ss_multiply generic map(WIDTH=>WIDTH,SIGNED_MODE=>SIGNED_MODE)\n    port map(a=>a,b=>b,result_lo=>values(2),result_hi=>mul_hi,overflow=>mul_overflow,zero=>mul_zero,negative=>mul_negative);\n  division:entity work.ss_divide generic map(WIDTH=>WIDTH,SIGNED_MODE=>SIGNED_MODE)\n    port map(clk=>clk,rst=>rst,en=>en,start=>div_start,a=>div_a,b=>div_b,quotient=>div_q,remainder=>div_r,\n      busy=>open,done=>div_done,valid=>div_valid,divide_by_zero=>div_error,overflow=>div_overflow,zero=>div_zero,negative=>div_negative);\n  values(3)<=div_q;\n  logic_and:entity work.ss_bitwise generic map(WIDTH=>WIDTH,OPERATION=>0) port map(a=>a,b=>b,y=>values(4),zero=>open);\n  logic_or:entity work.ss_bitwise generic map(WIDTH=>WIDTH,OPERATION=>1) port map(a=>a,b=>b,y=>values(5),zero=>open);\n  logic_xor:entity work.ss_bitwise generic map(WIDTH=>WIDTH,OPERATION=>2) port map(a=>a,b=>b,y=>values(6),zero=>open);\n  logic_not:entity work.ss_bitwise generic map(WIDTH=>WIDTH,OPERATION=>6) port map(a=>a,b=>b,y=>values(7),zero=>open);\n  y<=result_value; result_hi<=result_upper; busy<=active; done<=event_done; valid<=result_valid;\n  carry<=flag_carry; borrow<=flag_borrow; overflow<=flag_overflow; divide_by_zero<=flag_divide;\n  zero<=flag_zero; negative<=flag_negative; invalid_op<=flag_invalid;\n  process(clk)\n    variable operation:natural range 0 to 7;\n  begin\n    if rising_edge(clk) then\n      event_done<='0'; div_start<='0';\n      if rst='1' then\n        active<='0'; result_valid<='0'; result_value<=(others=>'0'); result_upper<=(others=>'0');\n        div_a<=(others=>'0'); div_b<=(others=>'0');\n        flag_carry<='0'; flag_borrow<='0'; flag_overflow<='0'; flag_divide<='0'; flag_negative<='0'; flag_invalid<='0'; flag_zero<='1';\n      elsif active='1' then\n        if div_done='1' then\n          active<='0'; event_done<='1'; result_valid<=div_valid; result_value<=div_q; result_upper<=div_r;\n          flag_overflow<=div_overflow; flag_divide<=div_error; flag_zero<=div_zero; flag_negative<=div_negative;\n        end if;\n      elsif start='1' and en='1' then\n        result_valid<='0'; flag_carry<='0'; flag_borrow<='0'; flag_overflow<='0'; flag_divide<='0'; flag_invalid<='0';\n        if is_x(opcode) then flag_invalid<='1'; event_done<='1';\n        else\n          operation:=to_integer(unsigned(opcode));\n          if operation=3 then div_a<=a; div_b<=b; div_start<='1'; active<='1';\n          else\n            result_value<=values(operation); result_upper<=(others=>'0'); result_valid<='1'; event_done<='1';\n            flag_zero<='0'; if unsigned(values(operation))=0 then flag_zero<='1'; end if;\n            flag_negative<='0'; if SIGNED_MODE=1 then flag_negative<=values(operation)(WIDTH-1); end if;\n            case operation is\n              when 0 => flag_carry<=add_carry; flag_overflow<=add_overflow; flag_zero<=add_zero; flag_negative<=add_negative;\n              when 1 => flag_borrow<=sub_borrow; flag_overflow<=sub_overflow; flag_zero<=sub_zero; flag_negative<=sub_negative;\n              when 2 => result_upper<=mul_hi; flag_overflow<=mul_overflow; flag_zero<=mul_zero; flag_negative<=mul_negative;\n              when others => null;\n            end case;\n          end if;\n        end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "start",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "opcode",
+          "dir": "in",
+          "width": 3,
+          "dataType": "std_logic_vector",
+          "left": 2,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "2",
+          "rightExpr": "0"
+        },
+        {
+          "name": "a",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "b",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "cin",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "result_hi",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "busy",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "done",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "carry",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "borrow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "overflow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "divide_by_zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "negative",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "invalid_op",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "SIGNED_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [
+        "ss_add_sub",
+        "ss_multiply",
+        "ss_divide",
+        "ss_bitwise"
+      ],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "ALU",
+      "inputNotes": "opcode 0:+,1:-,2:*,3:/,4:AND,5:OR,6:XOR,7:NOT a. Idle enabled start captures operands; done pulses, busy starts ignored. result_hi=multiply high or divide remainder. en pauses division.",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "start": 0,
+        "cin": 0
+      }
+    },
+    "ss_add_sub": {
+      "moduleKind": "vhdl",
+      "name": "ss_add_sub",
+      "description": "WIDTH-bit result with carry/borrow input and independent unsigned/signed flags.",
+      "fileName": "ss_add_sub.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_add_sub is\n  generic (WIDTH:positive range 1 to 64:=8; SUBTRACT:natural range 0 to 1:=0; SIGNED_MODE:natural range 0 to 1:=0);\n  port (a,b:in std_logic_vector(WIDTH-1 downto 0); cin:in std_logic;\n    y:out std_logic_vector(WIDTH-1 downto 0); carry,borrow,overflow,zero,negative:out std_logic);\nend entity;\narchitecture rtl of ss_add_sub is begin\n  process(a,b,cin)\n    variable u:unsigned(WIDTH downto 0);\n    variable s:signed(WIDTH+1 downto 0);\n    variable result:std_logic_vector(WIDTH-1 downto 0);\n  begin\n    carry<='0'; borrow<='0'; overflow<='0'; negative<='0';\n    if SUBTRACT=0 then\n      u:=resize(unsigned(a),WIDTH+1)+resize(unsigned(b),WIDTH+1);\n      s:=resize(signed(a),WIDTH+2)+resize(signed(b),WIDTH+2);\n      if cin='1' then u:=u+1; s:=s+1; end if;\n      carry<=u(WIDTH);\n    else\n      u:=resize(unsigned(a),WIDTH+1)-resize(unsigned(b),WIDTH+1);\n      s:=resize(signed(a),WIDTH+2)-resize(signed(b),WIDTH+2);\n      if cin='1' then u:=u-1; s:=s-1; end if;\n      borrow<=u(WIDTH);\n    end if;\n    result:=std_logic_vector(u(WIDTH-1 downto 0)); y<=result;\n    if SIGNED_MODE=1 then\n      negative<=result(WIDTH-1);\n      if s/=resize(signed(result),WIDTH+2) then overflow<='1'; end if;\n    end if;\n    zero<='0'; if unsigned(result)=0 then zero<='1'; end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "a",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "b",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "cin",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "carry",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "borrow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "overflow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "negative",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "SUBTRACT",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        },
+        {
+          "name": "SIGNED_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "ADD_SUB",
+      "displayName": "Add / Subtract",
+      "defaultInputs": {
+        "cin": 0
+      },
+      "inputNotes": "SUBTRACT=0 บวก, 1 ลบ · cin เป็น carry in/borrow in ตามโหมด · carry/borrow ใช้ unsigned, overflow ใช้ signed · y คือ WIDTH บิตต่ำ"
+    },
+    "ss_multiply": {
+      "moduleKind": "vhdl",
+      "name": "ss_multiply",
+      "description": "Full 2*WIDTH-bit product split into two WIDTH-bit ports; overflow means it does not fit the low half.",
+      "fileName": "ss_multiply.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_multiply is\n  generic (WIDTH:positive range 1 to 64:=8; SIGNED_MODE:natural range 0 to 1:=0);\n  port (a,b:in std_logic_vector(WIDTH-1 downto 0);\n    result_lo,result_hi:out std_logic_vector(WIDTH-1 downto 0); overflow,zero,negative:out std_logic);\nend entity;\narchitecture rtl of ss_multiply is begin\n  process(a,b)\n    variable product:std_logic_vector(2*WIDTH-1 downto 0);\n  begin\n    overflow<='0'; negative<='0';\n    if SIGNED_MODE=1 then\n      product:=std_logic_vector(signed(a)*signed(b)); negative<=product(2*WIDTH-1);\n      if signed(product)/=resize(signed(product(WIDTH-1 downto 0)),2*WIDTH) then overflow<='1'; end if;\n    else\n      product:=std_logic_vector(unsigned(a)*unsigned(b));\n      if unsigned(product(2*WIDTH-1 downto WIDTH))/=0 then overflow<='1'; end if;\n    end if;\n    result_lo<=product(WIDTH-1 downto 0); result_hi<=product(2*WIDTH-1 downto WIDTH);\n    zero<='0'; if unsigned(product)=0 then zero<='1'; end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "a",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "b",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "result_lo",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "result_hi",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "overflow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "negative",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "SIGNED_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "MULTIPLY",
+      "displayName": "Full Multiply",
+      "defaultInputs": {},
+      "inputNotes": "ผลเต็ม = result_hi & result_lo · WIDTH=64 ได้ครบ 128 bit · overflow บอกว่าผลเต็มไม่พอดี WIDTH bit ไม่ได้แปลว่าผลเต็มหาย"
+    },
+    "ss_divide": {
+      "moduleKind": "vhdl",
+      "name": "ss_divide",
+      "description": "Capture on idle start; WIDTH enabled steps; signed quotient truncates toward zero, remainder follows dividend sign.",
+      "fileName": "ss_divide.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_divide is\n  generic (WIDTH:positive range 1 to 64:=8; SIGNED_MODE:natural range 0 to 1:=0);\n  port (clk,rst,en,start:in std_logic; a,b:in std_logic_vector(WIDTH-1 downto 0);\n    quotient,remainder:out std_logic_vector(WIDTH-1 downto 0);\n    busy,done,valid,divide_by_zero,overflow,zero,negative:out std_logic);\nend entity;\narchitecture rtl of ss_divide is\n  signal active,event_done,result_valid,error_zero,error_overflow:std_logic:='0';\n  signal q_work,divisor,q_result,r_result:unsigned(WIDTH-1 downto 0):=(others=>'0');\n  signal r_work:unsigned(WIDTH downto 0):=(others=>'0');\n  signal negate_q,negate_r:std_logic:='0';\n  signal step:natural range 0 to WIDTH-1:=0;\nbegin\n  quotient<=std_logic_vector(q_result); remainder<=std_logic_vector(r_result);\n  busy<=active; done<=event_done; valid<=result_valid; divide_by_zero<=error_zero; overflow<=error_overflow;\n  zero<='1' when q_result=0 else '0'; negative<=q_result(WIDTH-1) when SIGNED_MODE=1 else '0';\n  process(clk)\n    variable next_r:unsigned(WIDTH downto 0);\n    variable next_q,final_q,final_r,mag_a,mag_b,min_value:unsigned(WIDTH-1 downto 0);\n  begin\n    if rising_edge(clk) then\n      event_done<='0';\n      if rst='1' then\n        active<='0'; result_valid<='0'; error_zero<='0'; error_overflow<='0';\n        q_work<=(others=>'0'); divisor<=(others=>'0'); r_work<=(others=>'0');\n        q_result<=(others=>'0'); r_result<=(others=>'0'); negate_q<='0'; negate_r<='0'; step<=0;\n      elsif start='1' and active='0' then\n        result_valid<='0'; error_zero<='0'; error_overflow<='0';\n        mag_a:=unsigned(a); mag_b:=unsigned(b); min_value:=(others=>'0'); min_value(WIDTH-1):='1';\n        if unsigned(b)=0 then\n          q_result<=(others=>'0'); r_result<=unsigned(a); error_zero<='1'; event_done<='1';\n        elsif SIGNED_MODE=1 and unsigned(a)=min_value and signed(b)=-1 then\n          q_result<=unsigned(a); r_result<=(others=>'0'); error_overflow<='1'; event_done<='1';\n        else\n          negate_q<='0'; negate_r<='0';\n          if SIGNED_MODE=1 then\n            negate_q<=a(WIDTH-1) xor b(WIDTH-1); negate_r<=a(WIDTH-1);\n            if a(WIDTH-1)='1' then mag_a:=unsigned(-signed(a)); end if;\n            if b(WIDTH-1)='1' then mag_b:=unsigned(-signed(b)); end if;\n          end if;\n          q_work<=mag_a; divisor<=mag_b; r_work<=(others=>'0'); step<=0; active<='1';\n        end if;\n      elsif active='1' and en='1' then\n        next_r:=shift_left(r_work,1); next_r(0):=q_work(WIDTH-1); next_q:=shift_left(q_work,1);\n        if next_r>=resize(divisor,WIDTH+1) then next_r:=next_r-resize(divisor,WIDTH+1); next_q(0):='1'; end if;\n        q_work<=next_q; r_work<=next_r;\n        if step=WIDTH-1 then\n          final_q:=next_q; final_r:=next_r(WIDTH-1 downto 0);\n          if negate_q='1' then final_q:=unsigned(-signed(final_q)); end if;\n          if negate_r='1' then final_r:=unsigned(-signed(final_r)); end if;\n          q_result<=final_q; r_result<=final_r; active<='0'; event_done<='1'; result_valid<='1';\n        else step<=step+1; end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "start",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "a",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "b",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "quotient",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "remainder",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "busy",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "done",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "divide_by_zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "overflow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "negative",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "SIGNED_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "DIVIDE",
+      "displayName": "Iterative Divide / Remainder",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "start": 0
+      },
+      "inputNotes": "ต่อ clk หลัก · start pulse 1 clk · busy=1 ไม่รับ start ใหม่ · en=0 หยุดขั้นคำนวณ · done ยาว 1 clk · valid ค้างจน start/reset · หารศูนย์หรือ signed min/-1 valid=0 พร้อม error flag"
+    },
+    "ss_bitwise": {
+      "moduleKind": "vhdl",
+      "name": "ss_bitwise",
+      "description": "AND/OR/XOR/NAND/NOR/XNOR/NOT a, with zero flag.",
+      "fileName": "ss_bitwise.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_bitwise is\n  generic (WIDTH:positive range 1 to 64:=8; OPERATION:natural range 0 to 6:=0);\n  port (a,b:in std_logic_vector(WIDTH-1 downto 0); y:out std_logic_vector(WIDTH-1 downto 0); zero:out std_logic);\nend entity;\narchitecture rtl of ss_bitwise is begin\n  process(a,b)\n    variable result:std_logic_vector(WIDTH-1 downto 0);\n  begin\n    case OPERATION is\n      when 0=>result:=a and b; when 1=>result:=a or b; when 2=>result:=a xor b;\n      when 3=>result:=a nand b; when 4=>result:=a nor b; when 5=>result:=a xnor b;\n      when others=>result:=not a;\n    end case;\n    y<=result; zero<='0'; if unsigned(result)=0 then zero<='1'; end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "a",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "b",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "OPERATION",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "6",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "BITWISE",
+      "displayName": "Bitwise Operations",
+      "defaultInputs": {},
+      "inputNotes": "OPERATION เลือกการทำงาน · NOT a ไม่ใช้ b แต่ควรต่อ b=0 เมื่อ import raw VHDL · WIDTH 1–64"
+    },
+    "ss_fsm_template": {
+      "moduleKind": "vhdl",
+      "name": "ss_fsm_template",
+      "description": "IDLE(0) → ACTIVE(1) on start → DONE(2) on finish. cancel wins; DONE restarts on start. en holds; invalid 3 recovers even disabled. done is a level. Editable schematic is supplied separately.",
+      "fileName": "ss_fsm_template.vhd",
+      "vhdl": "-- Exported from ss_fsm_template.sch.txt; regenerate after editing that template.\nlibrary IEEE;\nuse IEEE.STD_LOGIC_1164.ALL;\nuse IEEE.NUMERIC_STD.ALL;\n\n-- Generated by Schematic Studio  (target: Xilinx Spartan-7 / Vivado)\n-- Schematic: ss_fsm_template\n\nentity ss_fsm_template is\n  Port (\n    clk : in  STD_LOGIC;\n    rst : in  STD_LOGIC;\n    en : in  STD_LOGIC;\n    start : in  STD_LOGIC;\n    finish : in  STD_LOGIC;\n    cancel : in  STD_LOGIC;\n    state : out STD_LOGIC_VECTOR(1 downto 0);\n    active : out STD_LOGIC;\n    done : out STD_LOGIC;\n    invalid : out STD_LOGIC\n  );\nend ss_fsm_template;\n\narchitecture Behavioral of ss_fsm_template is\n  signal idle_state_eq, active_state_eq, done_state_eq, invalid_state_eq, enable_storage_o, force_idle_o, permit_state_o, startable_o, start_active_o, keep_active_o, finish_active_o, keep_done_o, not_finish_o, not_start_o, next_active_o, next_done_o, active_bit_o, done_bit_o : STD_LOGIC;\n  signal state_bit0_q : STD_LOGIC := '0';\n  signal state_bit1_q : STD_LOGIC := '0';\n  signal state_bus_o : STD_LOGIC_VECTOR(1 downto 0);\n  signal bus_s : STD_LOGIC_VECTOR(1 downto 0);\nbegin\n\n  -- combinational logic\n  idle_state_eq <= '1' when state_bus_o = std_logic_vector'(\"00\") else '0';\n  active_state_eq <= '1' when state_bus_o = std_logic_vector'(\"01\") else '0';\n  done_state_eq <= '1' when state_bus_o = std_logic_vector'(\"10\") else '0';\n  invalid_state_eq <= '1' when state_bus_o = std_logic_vector'(\"11\") else '0';\n  enable_storage_o <= en or invalid_state_eq or rst;\n  force_idle_o <= cancel or invalid_state_eq or rst;\n  permit_state_o <= not force_idle_o;\n  startable_o <= idle_state_eq or done_state_eq;\n  start_active_o <= startable_o and start;\n  keep_active_o <= active_state_eq and not_finish_o;\n  finish_active_o <= active_state_eq and finish;\n  keep_done_o <= done_state_eq and not_start_o;\n  not_finish_o <= not finish;\n  not_start_o <= not start;\n  next_active_o <= start_active_o or keep_active_o;\n  next_done_o <= finish_active_o or keep_done_o;\n  active_bit_o <= permit_state_o and next_active_o;\n  done_bit_o <= permit_state_o and next_done_o;\n  state_bus_o <= bus_s;\n\n  -- sequential logic (flip-flops)\n  process(clk)\n  begin\n    if rising_edge(clk) then\n      if enable_storage_o = '1' then\n        state_bit0_q  <= active_bit_o;\n      end if;\n    end if;\n  end process;\n  process(clk)\n  begin\n    if rising_edge(clk) then\n      if enable_storage_o = '1' then\n        state_bit1_q  <= done_bit_o;\n      end if;\n    end if;\n  end process;\n\n  -- output drivers\n  state <= state_bus_o;\n  active <= active_state_eq;\n  done <= done_state_eq;\n  invalid <= invalid_state_eq;\n  bus_s(0) <= state_bit0_q;\n  bus_s(1) <= state_bit1_q;\n\nend Behavioral;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "start",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "finish",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "cancel",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "state",
+          "dir": "out",
+          "width": 2,
+          "dataType": "std_logic_vector",
+          "left": 1,
+          "right": 0,
+          "rangeDir": "downto"
+        },
+        {
+          "name": "active",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "done",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "invalid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "FSM",
+      "inputNotes": "IDLE(0) → ACTIVE(1) on start → DONE(2) on finish. cancel wins; DONE restarts on start. en holds; invalid 3 recovers even disabled. done is a level. Editable schematic is supplied separately.",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "start": 0,
+        "finish": 0,
+        "cancel": 0
+      }
+    },
+    "ss_mmss_timer": {
+      "moduleKind": "vhdl",
+      "name": "ss_mmss_timer",
+      "description": "MM:SS up/down: reset 00:00; load stops; invalid load holds time and pulses load_error. reset > load > pause > start > tick. Stop at endpoint. Resume waits a full interval + one pipeline clock; en=0 resets fractional timing.",
+      "fileName": "ss_mmss_timer.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_mmss_timer is\n  generic (MAX_MINUTES:natural range 0 to 99:=99; TICKS_PER_SECOND:positive range 1 to 2147483647:=50000000);\n  port (clk,rst,en,start,pause,load,down:in std_logic;\n    load_minutes:in std_logic_vector(6 downto 0); load_seconds:in std_logic_vector(5 downto 0);\n    minutes:out std_logic_vector(6 downto 0); seconds:out std_logic_vector(5 downto 0);\n    digits:out std_logic_vector(15 downto 0); running,terminal,done,valid,load_error:out std_logic);\nend entity;\narchitecture rtl of ss_mmss_timer is\n  signal minute_value:std_logic_vector(6 downto 0);\n  signal second_value:std_logic_vector(5 downto 0);\n  signal minute_bcd,second_bcd:std_logic_vector(63 downto 0);\n  signal active,event_done,event_error:std_logic:='0';\n  signal at_end,load_ok,load_time,tick_reset,tick_enable,tick,step,minute_step,counter_down:std_logic;\n  signal minute_valid,second_valid,minute_digits_valid,second_digits_valid:std_logic;\nbegin\n  minutes<=minute_value; seconds<=second_value; digits<=minute_bcd(7 downto 0) & second_bcd(7 downto 0);\n  running<=active; terminal<=at_end; done<=event_done; load_error<=event_error;\n  valid<=minute_valid and second_valid and minute_digits_valid and second_digits_valid;\n  load_ok<='1' when not is_x(load_minutes & load_seconds) and unsigned(load_minutes)<=MAX_MINUTES and unsigned(load_seconds)<=59 else '0';\n  load_time<=load and load_ok;\n  counter_down<=down and not rst;\n  at_end<='1' when (down='1' and unsigned(minute_value)=0 and unsigned(second_value)=0) or\n    (down='0' and unsigned(minute_value)=MAX_MINUTES and unsigned(second_value)=59) else '0';\n  tick_reset<=rst or load or start or pause or not en;\n  tick_enable<=active and en and not at_end;\n  step<=tick and active and en and not at_end and not rst and not load and not pause and not start;\n  minute_step<='1' when step='1' and ((down='0' and unsigned(second_value)=59) or (down='1' and unsigned(second_value)=0)) else '0';\n  second_tick:entity work.ss_tick generic map(DIVISOR=>TICKS_PER_SECOND)\n    port map(clk=>clk,rst=>tick_reset,en=>tick_enable,tick=>tick);\n  minute_counter:entity work.ss_counter generic map(WIDTH=>7,WRAP=>0)\n    port map(clk=>clk,rst=>rst,en=>minute_step,load=>load_time,down=>counter_down,minimum=>\"0000000\",\n      maximum=>std_logic_vector(to_unsigned(MAX_MINUTES,7)),load_value=>load_minutes,q=>minute_value,valid=>minute_valid,terminal=>open,wrapped=>open);\n  second_counter:entity work.ss_counter generic map(WIDTH=>6,WRAP=>1)\n    port map(clk=>clk,rst=>rst,en=>step,load=>load_time,down=>counter_down,minimum=>\"000000\",maximum=>\"111011\",\n      load_value=>load_seconds,q=>second_value,valid=>second_valid,terminal=>open,wrapped=>open);\n  minute_format:entity work.ss_bin_to_bcd generic map(WIDTH=>7,DIGITS=>2)\n    port map(d=>minute_value,bcd_lo=>minute_bcd,bcd_hi=>open,negative=>open,overflow=>open,valid=>minute_digits_valid);\n  second_format:entity work.ss_bin_to_bcd generic map(WIDTH=>6,DIGITS=>2)\n    port map(d=>second_value,bcd_lo=>second_bcd,bcd_hi=>open,negative=>open,overflow=>open,valid=>second_digits_valid);\n  process(clk)\n  begin\n    if rising_edge(clk) then\n      event_done<='0'; event_error<='0';\n      if rst='1' then active<='0';\n      elsif load='1' then active<='0'; if load_ok/='1' then event_error<='1'; end if;\n      elsif pause='1' then active<='0';\n      elsif start='1' then\n        if at_end='1' then active<='0'; event_done<='1'; else active<='1'; end if;\n      elsif active='1' then\n        if at_end='1' or (step='1' and ((down='1' and unsigned(minute_value)=0 and unsigned(second_value)=1) or\n          (down='0' and unsigned(minute_value)=MAX_MINUTES and unsigned(second_value)=58))) then active<='0'; event_done<='1'; end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "start",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "pause",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "load",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "down",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "load_minutes",
+          "dir": "in",
+          "width": 7,
+          "dataType": "std_logic_vector",
+          "left": 6,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "6",
+          "rightExpr": "0"
+        },
+        {
+          "name": "load_seconds",
+          "dir": "in",
+          "width": 6,
+          "dataType": "std_logic_vector",
+          "left": 5,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "5",
+          "rightExpr": "0"
+        },
+        {
+          "name": "minutes",
+          "dir": "out",
+          "width": 7,
+          "dataType": "std_logic_vector",
+          "left": 6,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "6",
+          "rightExpr": "0"
+        },
+        {
+          "name": "seconds",
+          "dir": "out",
+          "width": 6,
+          "dataType": "std_logic_vector",
+          "left": 5,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "5",
+          "rightExpr": "0"
+        },
+        {
+          "name": "digits",
+          "dir": "out",
+          "width": 16,
+          "dataType": "std_logic_vector",
+          "left": 15,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "15",
+          "rightExpr": "0"
+        },
+        {
+          "name": "running",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "terminal",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "done",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "load_error",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "MAX_MINUTES",
+          "dataType": "natural",
+          "defaultExpr": "99",
+          "minExpr": "0",
+          "maxExpr": "99",
+          "defaultValue": 99
+        },
+        {
+          "name": "TICKS_PER_SECOND",
+          "dataType": "positive",
+          "defaultExpr": "50000000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000000
+        }
+      ],
+      "dependencies": [
+        "ss_tick",
+        "ss_counter",
+        "ss_bin_to_bcd"
+      ],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "MMSS_TIMER",
+      "inputNotes": "MM:SS up/down: reset 00:00; load stops; invalid load holds time and pulses load_error. reset > load > pause > start > tick. Stop at endpoint. Resume waits a full interval + one pipeline clock; en=0 resets fractional timing.",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "start": 0,
+        "pause": 0,
+        "load": 0,
+        "down": 0,
+        "load_minutes": 0,
+        "load_seconds": 0
+      }
+    },
+    "ss_tick": {
+      "moduleKind": "vhdl",
+      "name": "ss_tick",
+      "description": "One tick every DIVISOR enabled rising edges; reset clears phase; DIVISOR=1 gives an event each enabled edge.",
+      "fileName": "ss_tick.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_tick is\n  generic (DIVISOR:positive range 1 to 2147483647:=50000000);\n  port (clk,rst,en:in std_logic; tick:out std_logic);\nend entity;\narchitecture rtl of ss_tick is\n  signal count:natural range 0 to DIVISOR-1:=0;\n  signal event_tick:std_logic:='0';\nbegin\n  tick <= event_tick;\n  process(clk) begin\n    if rising_edge(clk) then\n      event_tick<='0';\n      if rst='1' then count<=0;\n      elsif en='1' then\n        if count=DIVISOR-1 then count<=0; event_tick<='1';\n        else count<=count+1; end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "tick",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "DIVISOR",
+          "dataType": "positive",
+          "defaultExpr": "50000000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000000
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "TICK",
+      "displayName": "Tick Generator",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1
+      },
+      "inputNotes": "50 MHz / DIVISOR = ความถี่ tick · DIVISOR=50000000 ได้ 1 Hz · ใช้ tick ต่อ en ของโมดูลที่ใช้ clk หลักร่วมกัน"
+    },
+    "ss_counter": {
+      "moduleKind": "vhdl",
+      "name": "ss_counter",
+      "description": "Inclusive unsigned bounds; reset → load → enable; WRAP chooses wrap or stop.",
+      "fileName": "ss_counter.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_counter is\n  generic (WIDTH:positive range 1 to 64:=8; WRAP:natural range 0 to 1:=1);\n  port (clk,rst,en,load,down:in std_logic;\n    minimum,maximum,load_value:in std_logic_vector(WIDTH-1 downto 0);\n    q:out std_logic_vector(WIDTH-1 downto 0);\n    valid,terminal,wrapped:out std_logic);\nend entity;\narchitecture rtl of ss_counter is\n  signal value:unsigned(WIDTH-1 downto 0):=(others=>'0');\n  signal wrap_event:std_logic:='0';\nbegin\n  q <= std_logic_vector(value);\n  valid <= '1' when unsigned(minimum)<=unsigned(maximum) and value>=unsigned(minimum) and value<=unsigned(maximum) else '0';\n  terminal <= '1' when unsigned(minimum)<=unsigned(maximum) and\n    ((down='0' and value=unsigned(maximum)) or (down='1' and value=unsigned(minimum))) else '0';\n  wrapped <= wrap_event;\n  process(clk)\n    variable lo,hi,first:unsigned(WIDTH-1 downto 0);\n  begin\n    if rising_edge(clk) then\n      lo:=unsigned(minimum); hi:=unsigned(maximum);\n      first:=lo; if down='1' then first:=hi; end if;\n      wrap_event<='0';\n      if rst='1' then value<=first;\n      elsif lo<=hi then\n        if load='1' then\n          if unsigned(load_value)<lo then value<=lo;\n          elsif unsigned(load_value)>hi then value<=hi;\n          else value<=unsigned(load_value); end if;\n        elsif en='1' then\n          if value<lo or value>hi then value<=first;\n          elsif (down='0' and value=hi) or (down='1' and value=lo) then\n            if WRAP=1 then value<=first; wrap_event<='1'; end if;\n          elsif down='1' then value<=value-1;\n          else value<=value+1; end if;\n        end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "load",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "down",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "minimum",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "maximum",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "load_value",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "q",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "terminal",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "wrapped",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "WRAP",
+          "dataType": "natural",
+          "defaultExpr": "1",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 1
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "COUNTER",
+      "displayName": "Synchronous Counter",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "load": 0,
+        "down": 0,
+        "minimum": 0,
+        "load_value": 0
+      },
+      "inputNotes": "ต่อ clk หลัก · maximum ต่อ CONST · down=0 ขึ้น/1 ลง · rst เลือกต้นช่วงตามทิศทาง · load clamp เข้าช่วงและทำงานแม้ en=0"
+    },
+    "ss_bin_to_bcd": {
+      "moduleKind": "vhdl",
+      "name": "ss_bin_to_bcd",
+      "description": "Full 20-digit unsigned magnitude, with signed input and configured digit-count overflow.",
+      "fileName": "ss_bin_to_bcd.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_bin_to_bcd is\n  generic (WIDTH:positive range 1 to 64:=8; DIGITS:positive range 1 to 20:=3; SIGNED_MODE:natural range 0 to 1:=0);\n  port (d:in std_logic_vector(WIDTH-1 downto 0);\n    bcd_lo:out std_logic_vector(63 downto 0); bcd_hi:out std_logic_vector(15 downto 0);\n    negative,valid,overflow:out std_logic);\nend entity;\narchitecture rtl of ss_bin_to_bcd is begin\n  process(d)\n    variable magnitude:unsigned(WIDTH-1 downto 0);\n    variable digits_value:unsigned(79 downto 0);\n    variable too_large:boolean;\n  begin\n    digits_value:=(others=>'0'); negative<='0'; valid<='0'; overflow<='0';\n    if not is_x(d) then\n      magnitude:=unsigned(d);\n      if SIGNED_MODE=1 and d(WIDTH-1)='1' then magnitude:=unsigned(-signed(d)); negative<='1'; end if;\n      for bit_index in WIDTH-1 downto 0 loop\n        for digit in 0 to 19 loop\n          if digits_value(4*digit+3 downto 4*digit)>=5 then\n            digits_value(4*digit+3 downto 4*digit):=digits_value(4*digit+3 downto 4*digit)+3;\n          end if;\n        end loop;\n        digits_value:=shift_left(digits_value,1); digits_value(0):=magnitude(bit_index);\n      end loop;\n      too_large:=false;\n      for digit in DIGITS to 19 loop if digits_value(4*digit+3 downto 4*digit)/=0 then too_large:=true; end if; end loop;\n      if too_large then overflow<='1'; else valid<='1'; end if;\n    end if;\n    bcd_lo<=std_logic_vector(digits_value(63 downto 0)); bcd_hi<=std_logic_vector(digits_value(79 downto 64));\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "bcd_lo",
+          "dir": "out",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "63",
+          "rightExpr": "0"
+        },
+        {
+          "name": "bcd_hi",
+          "dir": "out",
+          "width": 16,
+          "dataType": "std_logic_vector",
+          "left": 15,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "15",
+          "rightExpr": "0"
+        },
+        {
+          "name": "negative",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "overflow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "DIGITS",
+          "dataType": "positive",
+          "defaultExpr": "3",
+          "minExpr": "1",
+          "maxExpr": "20",
+          "defaultValue": 3
+        },
+        {
+          "name": "SIGNED_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "BIN_TO_BCD",
+      "displayName": "BIN to BCD",
+      "defaultInputs": {},
+      "inputNotes": "bcd_lo 64 bit = หลัก 0–15, bcd_hi 16 bit = หลัก 16–19 · หลักหน่วยอยู่ bits 3:0 · DIGITS บอกจำนวนหลักที่ยอมรับ · overflow ไม่ตัดผลเต็ม"
+    }
+  }
+}

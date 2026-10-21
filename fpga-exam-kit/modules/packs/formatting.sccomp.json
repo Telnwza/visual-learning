@@ -1,0 +1,239 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "customs": {
+    "ss_digit_ascii": {
+      "moduleKind": "vhdl",
+      "name": "ss_digit_ascii",
+      "description": "One decimal or HEX nibble to ASCII; invalid input gives question mark.",
+      "fileName": "ss_digit_ascii.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_digit_ascii is\n  generic (HEX_MODE:natural range 0 to 1:=0; UPPERCASE:natural range 0 to 1:=1);\n  port (digit:in std_logic_vector(3 downto 0); character:out std_logic_vector(7 downto 0); valid:out std_logic);\nend entity;\narchitecture rtl of ss_digit_ascii is begin\n  process(digit)\n    variable value:natural range 0 to 15;\n  begin\n    character<=x\"3F\"; valid<='0';\n    if not is_x(digit) then\n      value:=to_integer(unsigned(digit));\n      if value<10 then character<=std_logic_vector(to_unsigned(48+value,8)); valid<='1';\n      elsif HEX_MODE=1 then\n        if UPPERCASE=1 then character<=std_logic_vector(to_unsigned(65+value-10,8));\n        else character<=std_logic_vector(to_unsigned(97+value-10,8)); end if;\n        valid<='1';\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "digit",
+          "dir": "in",
+          "width": 4,
+          "dataType": "std_logic_vector",
+          "left": 3,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "3",
+          "rightExpr": "0"
+        },
+        {
+          "name": "character",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "7",
+          "rightExpr": "0"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "HEX_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        },
+        {
+          "name": "UPPERCASE",
+          "dataType": "natural",
+          "defaultExpr": "1",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 1
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "DIGIT_ASCII",
+      "displayName": "Digit to ASCII",
+      "defaultInputs": {},
+      "inputNotes": "HEX_MODE=0 ยอมรับ 0–9, HEX_MODE=1 ยอมรับ A–F ด้วย · UPPERCASE เลือกตัวพิมพ์ · invalid ให้ ASCII ?"
+    },
+    "ss_number_formatter": {
+      "moduleKind": "vhdl",
+      "name": "ss_number_formatter",
+      "description": "Packed decimal/HEX digits to 32 ASCII cells with leading padding, sign and fixed decimal point.",
+      "fileName": "ss_number_formatter.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_number_formatter is\n  generic (DIGITS:positive range 1 to 20:=3; HEX_MODE:natural range 0 to 1:=0;\n    SIGNED_DISPLAY:natural range 0 to 1:=0; LEADING_ZERO:natural range 0 to 1:=0;\n    FRACTION_DIGITS:natural range 0 to DIGITS:=0; UPPERCASE:natural range 0 to 1:=1);\n  port (digits_lo:in std_logic_vector(63 downto 0); digits_hi:in std_logic_vector(15 downto 0);\n    negative,input_valid:in std_logic;\n    text_0,text_1,text_2,text_3:out std_logic_vector(63 downto 0);\n    length:out std_logic_vector(4 downto 0); valid,overflow:out std_logic);\nend entity;\narchitecture rtl of ss_number_formatter is begin\n  process(digits_lo,digits_hi,negative,input_valid)\n    variable packed:std_logic_vector(79 downto 0);\n    variable text_value:std_logic_vector(255 downto 0);\n    variable position:natural range 0 to 32;\n    variable value,ascii:natural range 0 to 255;\n    variable bad,too_large,seen:boolean;\n  begin\n    packed:=digits_hi & digits_lo; text_value:=(others=>'0');\n    for i in 0 to 31 loop text_value(8*i+7 downto 8*i):=x\"20\"; end loop;\n    bad:=input_valid/='1' or is_x(packed) or (negative/='0' and negative/='1'); too_large:=false; seen:=false;\n    position:=0; valid<='0'; overflow<='0';\n    if not bad then\n      for i in 0 to 19 loop\n        value:=to_integer(unsigned(packed(4*i+3 downto 4*i)));\n        if HEX_MODE=0 and value>9 then bad:=true; end if;\n        if i>=DIGITS and value/=0 then too_large:=true; end if;\n      end loop;\n      if SIGNED_DISPLAY=0 and negative='1' then too_large:=true; end if;\n    end if;\n    if SIGNED_DISPLAY=1 then\n      if negative='1' then text_value(7 downto 0):=x\"2D\"; end if;\n      position:=1;\n    end if;\n    if FRACTION_DIGITS=DIGITS then text_value(8*position+7 downto 8*position):=x\"30\"; position:=position+1; end if;\n    for i in DIGITS-1 downto 0 loop\n      if FRACTION_DIGITS>0 and i=FRACTION_DIGITS-1 then\n        text_value(8*position+7 downto 8*position):=x\"2E\"; position:=position+1;\n      end if;\n      ascii:=48;\n      if not bad then\n        value:=to_integer(unsigned(packed(4*i+3 downto 4*i)));\n        if value<10 then ascii:=48+value;\n        elsif UPPERCASE=1 then ascii:=65+value-10; else ascii:=97+value-10; end if;\n        if LEADING_ZERO=0 and not seen and value=0 and i>FRACTION_DIGITS then ascii:=32;\n        else seen:=true; end if;\n      end if;\n      text_value(8*position+7 downto 8*position):=std_logic_vector(to_unsigned(ascii,8)); position:=position+1;\n    end loop;\n    if bad or too_large then\n      ascii:=63; if too_large then ascii:=35; overflow<='1'; end if;\n      for i in 0 to 31 loop\n        if i<position then text_value(8*i+7 downto 8*i):=std_logic_vector(to_unsigned(ascii,8)); end if;\n      end loop;\n    else valid<='1'; end if;\n    length<=std_logic_vector(to_unsigned(position,5));\n    text_0<=text_value(63 downto 0); text_1<=text_value(127 downto 64);\n    text_2<=text_value(191 downto 128); text_3<=text_value(255 downto 192);\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "digits_lo",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "63",
+          "rightExpr": "0"
+        },
+        {
+          "name": "digits_hi",
+          "dir": "in",
+          "width": 16,
+          "dataType": "std_logic_vector",
+          "left": 15,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "15",
+          "rightExpr": "0"
+        },
+        {
+          "name": "negative",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "input_valid",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "text_0",
+          "dir": "out",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "63",
+          "rightExpr": "0"
+        },
+        {
+          "name": "text_1",
+          "dir": "out",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "63",
+          "rightExpr": "0"
+        },
+        {
+          "name": "text_2",
+          "dir": "out",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "63",
+          "rightExpr": "0"
+        },
+        {
+          "name": "text_3",
+          "dir": "out",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "63",
+          "rightExpr": "0"
+        },
+        {
+          "name": "length",
+          "dir": "out",
+          "width": 5,
+          "dataType": "std_logic_vector",
+          "left": 4,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "4",
+          "rightExpr": "0"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "overflow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "DIGITS",
+          "dataType": "positive",
+          "defaultExpr": "3",
+          "minExpr": "1",
+          "maxExpr": "20",
+          "defaultValue": 3
+        },
+        {
+          "name": "HEX_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        },
+        {
+          "name": "SIGNED_DISPLAY",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        },
+        {
+          "name": "LEADING_ZERO",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        },
+        {
+          "name": "FRACTION_DIGITS",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "DIGITS",
+          "defaultValue": 0
+        },
+        {
+          "name": "UPPERCASE",
+          "dataType": "natural",
+          "defaultExpr": "1",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 1
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "NUMBER_FORMATTER",
+      "displayName": "Number Formatter / ASCII",
+      "defaultInputs": {
+        "digits_hi": 0,
+        "negative": 0,
+        "input_valid": 1
+      },
+      "inputNotes": "ต่อ BIN→BCD เข้ากล่องนี้ได้ · char 0 อยู่ text_0 bits 7:0 · text_0..3 ขาละ 8 ตัวอักษร · length คือจำนวนช่องใช้งาน · เกินหลักแสดง #, ข้อมูลผิดแสดง ? · แยกจาก LCD transport"
+    }
+  }
+}

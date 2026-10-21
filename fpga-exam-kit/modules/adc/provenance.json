@@ -1,0 +1,12 @@
+{
+  "labPath": "/Users/te/Downloads/20261008193355lab7countdowntimer.schproj.json",
+  "sha256": "09b4cbb9fc5ab2974d957473d5bf8823a5565c0671e5886057ab8c3595405563",
+  "project": "lab8_4_mode_8bits_cal",
+  "rootSheet": "adc",
+  "rootComponents": 28,
+  "flattenedComponents": 260,
+  "wires": 361,
+  "extraction": "ADC sheet only; remove display branch, retain all connecting junctions; flatten sub-sheets and orient existing electrical nets from their drivers.",
+  "metadata": "Added clear_valid and one-clock sample_valid/sticky valid on main clock; no reset added to original core.",
+  "exportFallbacks": 0
+}

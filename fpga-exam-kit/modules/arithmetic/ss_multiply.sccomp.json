@@ -1,0 +1,103 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_multiply",
+  "customs": {
+    "ss_multiply": {
+      "moduleKind": "vhdl",
+      "name": "ss_multiply",
+      "description": "Full 2*WIDTH-bit product split into two WIDTH-bit ports; overflow means it does not fit the low half.",
+      "fileName": "ss_multiply.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_multiply is\n  generic (WIDTH:positive range 1 to 64:=8; SIGNED_MODE:natural range 0 to 1:=0);\n  port (a,b:in std_logic_vector(WIDTH-1 downto 0);\n    result_lo,result_hi:out std_logic_vector(WIDTH-1 downto 0); overflow,zero,negative:out std_logic);\nend entity;\narchitecture rtl of ss_multiply is begin\n  process(a,b)\n    variable product:std_logic_vector(2*WIDTH-1 downto 0);\n  begin\n    overflow<='0'; negative<='0';\n    if SIGNED_MODE=1 then\n      product:=std_logic_vector(signed(a)*signed(b)); negative<=product(2*WIDTH-1);\n      if signed(product)/=resize(signed(product(WIDTH-1 downto 0)),2*WIDTH) then overflow<='1'; end if;\n    else\n      product:=std_logic_vector(unsigned(a)*unsigned(b));\n      if unsigned(product(2*WIDTH-1 downto WIDTH))/=0 then overflow<='1'; end if;\n    end if;\n    result_lo<=product(WIDTH-1 downto 0); result_hi<=product(2*WIDTH-1 downto WIDTH);\n    zero<='0'; if unsigned(product)=0 then zero<='1'; end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "a",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "b",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "result_lo",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "result_hi",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "overflow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "negative",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "SIGNED_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "MULTIPLY",
+      "displayName": "Full Multiply",
+      "defaultInputs": {},
+      "inputNotes": "ผลเต็ม = result_hi & result_lo · WIDTH=64 ได้ครบ 128 bit · overflow บอกว่าผลเต็มไม่พอดี WIDTH bit ไม่ได้แปลว่าผลเต็มหาย"
+    }
+  }
+}

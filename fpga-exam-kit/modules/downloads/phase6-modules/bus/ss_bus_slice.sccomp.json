@@ -1,0 +1,71 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_bus_slice",
+  "customs": {
+    "ss_bus_slice": {
+      "moduleKind": "vhdl",
+      "name": "ss_bus_slice",
+      "description": "y[j]=d[LSB+j]; OUT_WIDTH≤IN_WIDTH and LSB+OUT_WIDTH≤IN_WIDTH.",
+      "fileName": "ss_bus_slice.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_bus_slice is\n  generic (IN_WIDTH:positive range 1 to 64:=16;\n    OUT_WIDTH:positive range 1 to IN_WIDTH:=8;\n    LSB:natural range 0 to IN_WIDTH-OUT_WIDTH:=0);\n  port (d:in std_logic_vector(IN_WIDTH-1 downto 0);\n    y:out std_logic_vector(OUT_WIDTH-1 downto 0));\nend entity;\narchitecture rtl of ss_bus_slice is begin\n  y <= d(LSB+OUT_WIDTH-1 downto LSB);\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 16,
+          "dataType": "std_logic_vector",
+          "left": 15,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "IN_WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "OUT_WIDTH-1",
+          "rightExpr": "0"
+        }
+      ],
+      "generics": [
+        {
+          "name": "IN_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "16",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 16
+        },
+        {
+          "name": "OUT_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "IN_WIDTH",
+          "defaultValue": 8
+        },
+        {
+          "name": "LSB",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "IN_WIDTH-OUT_WIDTH",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "SLICE",
+      "displayName": "Bus Slice",
+      "defaultInputs": {},
+      "inputNotes": "Combinational · ลด OUT_WIDTH ก่อนลด IN_WIDTH · LSB คือบิตต้นทางที่ต่อกับ y[0]"
+    }
+  }
+}

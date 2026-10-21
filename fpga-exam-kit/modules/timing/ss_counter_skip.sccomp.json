@@ -1,0 +1,196 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_counter_skip",
+  "customs": {
+    "ss_counter_skip": {
+      "moduleKind": "vhdl",
+      "name": "ss_counter_skip",
+      "description": "Four WIDTH-bit exclusion slots; SKIP_COUNT selects the first 0–4 slots; no allowed candidate holds q and raises blocked.",
+      "fileName": "ss_counter_skip.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_counter_skip is\n  generic (WIDTH:positive range 1 to 64:=8; WRAP:natural range 0 to 1:=1;\n    SKIP_COUNT:natural range 0 to 4:=0);\n  port (clk,rst,en,load,down:in std_logic;\n    minimum,maximum,load_value:in std_logic_vector(WIDTH-1 downto 0);\n    skip_0,skip_1,skip_2,skip_3:in std_logic_vector(WIDTH-1 downto 0);\n    q:out std_logic_vector(WIDTH-1 downto 0);\n    valid,wrapped,blocked:out std_logic);\nend entity;\narchitecture rtl of ss_counter_skip is\n  type value_list is array(0 to 3) of unsigned(WIDTH-1 downto 0);\n  type search_result is record\n    value:unsigned(WIDTH-1 downto 0);\n    found,crossed:boolean;\n  end record;\n  signal exclusions:value_list;\n  signal value:unsigned(WIDTH-1 downto 0):=(others=>'0');\n  signal wrap_event,blocked_event:std_logic:='0';\n  function excluded(v:unsigned; values:value_list) return boolean is\n  begin\n    for i in 0 to SKIP_COUNT-1 loop if v=values(i) then return true; end if; end loop;\n    return false;\n  end function;\n  function search(first,lo,hi:unsigned; values:value_list; backwards,can_wrap:boolean) return search_result is\n    variable result:search_result;\n    variable candidate:unsigned(WIDTH-1 downto 0):=first;\n  begin\n    result.value:=first; result.found:=false; result.crossed:=false;\n    -- Four exclusions can block at most four distinct candidates.\n    for attempt in 0 to 4 loop\n      if not excluded(candidate,values) then result.value:=candidate; result.found:=true; exit; end if;\n      if (not backwards and candidate=hi) or (backwards and candidate=lo) then\n        if not can_wrap then exit; end if;\n        result.crossed:=true;\n        candidate:=lo; if backwards then candidate:=hi; end if;\n      elsif backwards then candidate:=candidate-1;\n      else candidate:=candidate+1; end if;\n    end loop;\n    return result;\n  end function;\nbegin\n  exclusions <= (unsigned(skip_0),unsigned(skip_1),unsigned(skip_2),unsigned(skip_3));\n  q <= std_logic_vector(value); wrapped <= wrap_event; blocked <= blocked_event;\n  valid <= '1' when unsigned(minimum)<=unsigned(maximum) and value>=unsigned(minimum) and\n    value<=unsigned(maximum) and not excluded(value,exclusions) else '0';\n  process(clk)\n    variable lo,hi,first,candidate:unsigned(WIDTH-1 downto 0);\n    variable result:search_result;\n    variable crossing,can_search:boolean;\n  begin\n    if rising_edge(clk) then\n      lo:=unsigned(minimum); hi:=unsigned(maximum);\n      first:=lo; if down='1' then first:=hi; end if;\n      wrap_event<='0';\n      if rst='1' then\n        value<=first; blocked_event<='1';\n        if lo<=hi then\n          result:=search(first,lo,hi,exclusions,down='1',true);\n          if result.found then value<=result.value; blocked_event<='0'; end if;\n        end if;\n      elsif load='1' or en='1' then\n        blocked_event<='1'; crossing:=false; can_search:=lo<=hi; candidate:=first;\n        if lo<=hi then\n          if load='1' then\n            candidate:=unsigned(load_value);\n            if candidate<lo then candidate:=lo; elsif candidate>hi then candidate:=hi; end if;\n          elsif value>=lo and value<=hi and not excluded(value,exclusions) then\n            if (down='0' and value=hi) or (down='1' and value=lo) then\n              can_search:=WRAP=1; crossing:=WRAP=1;\n            elsif down='1' then candidate:=value-1;\n            else candidate:=value+1; end if;\n          end if;\n          if can_search then\n            result:=search(candidate,lo,hi,exclusions,down='1',WRAP=1);\n            if result.found then\n              value<=result.value; blocked_event<='0';\n              if crossing or result.crossed then wrap_event<='1'; end if;\n            end if;\n          end if;\n        end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "load",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "down",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "minimum",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "maximum",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "load_value",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "skip_0",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "skip_1",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "skip_2",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "skip_3",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "q",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "wrapped",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "blocked",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "WRAP",
+          "dataType": "natural",
+          "defaultExpr": "1",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 1
+        },
+        {
+          "name": "SKIP_COUNT",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "4",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "COUNTER_SKIP",
+      "displayName": "Counter Skip Values",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "load": 0,
+        "down": 0,
+        "minimum": 0,
+        "load_value": 0,
+        "skip_0": 0,
+        "skip_1": 0,
+        "skip_2": 0,
+        "skip_3": 0
+      },
+      "inputNotes": "ต่อ clk หลัก · maximum และค่าที่จะข้ามต่อ CONST · SKIP_COUNT=2 ใช้ skip_0/skip_1 · blocked คือการค้นหาล่าสุดไม่พบตัวถัดไป รวมกรณี stop · rst ค้นหาค่าเริ่มที่ไม่ถูกข้าม"
+    }
+  }
+}

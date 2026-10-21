@@ -1,0 +1,54 @@
+format schematic-text 1
+circuit mmss_lcd
+input clk, rst, en, start, pause, load, down, load_minutes[7], load_seconds[6]
+output data[8], e, rs, rw, ready, busy, display_done, running, done, valid, load_error
+use "CUSTOM:ss_mmss_timer" as timer
+use "CUSTOM:ss_bus_zero_extend" as extend
+use "CUSTOM:ss_number_formatter" as formatter
+use "CUSTOM:ss_text_overlay" as overlay
+use "CUSTOM:ss_lcd16x2" as lcd
+part time @timer
+part widen @extend generic_IN_WIDTH=16 generic_OUT_WIDTH=64
+part number @formatter generic_DIGITS=4 generic_LEADING_ZERO=1 generic_FRACTION_DIGITS=2
+part text @overlay
+part screen @lcd
+part colon CONST width=64 value="202020202020203A"
+part spaces CONST width=64 value="2020202020202020"
+part position CONST width=5 value="2"
+part size CONST width=5 value="1"
+connect clk -> time.clk, screen.clk
+connect rst -> time.rst, screen.rst
+connect en -> time.en
+connect start -> time.start
+connect pause -> time.pause
+connect load -> time.load
+connect down -> time.down
+connect load_minutes -> time.load_minutes
+connect load_seconds -> time.load_seconds
+connect time.digits -> widen.d
+connect widen.y -> number.digits_lo
+connect time.valid -> number.input_valid
+connect number.text_0 -> text.base_0
+connect number.text_1 -> text.base_1
+connect number.text_2 -> text.base_2
+connect number.text_3 -> text.base_3
+connect number.valid -> text.field_valid
+connect colon.o -> text.field_0
+connect spaces.o -> text.field_1, text.field_2, text.field_3
+connect position.o -> text.offset
+connect size.o -> text.length
+connect text.text_0 -> screen.text_0
+connect text.text_1 -> screen.text_1
+connect text.text_2 -> screen.text_2
+connect text.text_3 -> screen.text_3
+connect screen.data -> data
+connect screen.e -> e
+connect screen.rs -> rs
+connect screen.rw -> rw
+connect screen.ready -> ready
+connect screen.busy -> busy
+connect screen.done -> display_done
+connect time.running -> running
+connect time.done -> done
+connect time.valid -> valid
+connect time.load_error -> load_error

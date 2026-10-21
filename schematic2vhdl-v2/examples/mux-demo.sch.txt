@@ -1,0 +1,9 @@
+format schematic-text 1
+circuit mux_demo
+input a[8], b[8], sel
+output y[8]
+part m MUX inputs=2 width=8
+connect a -> m.d0
+connect b -> m.d1
+connect sel -> m.s0
+connect m.y -> y

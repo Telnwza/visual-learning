@@ -1,0 +1,14 @@
+format schematic-text 1
+circuit mux_pair
+# Import mux-demo.sch.txt first. sel=0 selects a; sel=1 selects c.
+use mux_demo as mux
+input a[8], b[8], c[8], sel
+output result[8]
+part u1 @mux
+part u2 @mux
+connect a -> u1.a
+connect b -> u1.b
+connect sel -> u1.sel, u2.sel
+connect u1.y -> u2.a
+connect c -> u2.b
+connect u2.y -> result

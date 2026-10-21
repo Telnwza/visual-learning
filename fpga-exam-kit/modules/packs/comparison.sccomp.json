@@ -1,0 +1,355 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "customs": {
+    "ss_compare": {
+      "moduleKind": "vhdl",
+      "name": "ss_compare",
+      "description": "Equality and magnitude comparison with explicit signedness.",
+      "fileName": "ss_compare.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_compare is\n  generic (WIDTH:positive range 1 to 64:=8; SIGNED_MODE:natural range 0 to 1:=0);\n  port (a,b:in std_logic_vector(WIDTH-1 downto 0); eq,lt,gt,le,ge:out std_logic);\nend entity;\narchitecture rtl of ss_compare is begin\n  process(a,b)\n    variable less,equal:boolean;\n  begin\n    equal:=a=b;\n    if SIGNED_MODE=1 then less:=signed(a)<signed(b); else less:=unsigned(a)<unsigned(b); end if;\n    eq<='0'; lt<='0'; gt<='0'; le<='0'; ge<='0';\n    if equal then eq<='1'; end if;\n    if less then lt<='1'; else ge<='1'; end if;\n    if less or equal then le<='1'; else gt<='1'; end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "a",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "b",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "eq",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "lt",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "gt",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "le",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "ge",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "SIGNED_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "COMPARE",
+      "displayName": "Signed / Unsigned Compare",
+      "defaultInputs": {},
+      "inputNotes": "eq/lt/gt/le/ge · SIGNED_MODE=1 ตีความ two’s complement · ไม่เปลี่ยน primitive comparator เดิม"
+    },
+    "ss_range_check": {
+      "moduleKind": "vhdl",
+      "name": "ss_range_check",
+      "description": "Runtime bounds with independently inclusive/exclusive endpoints and invalid-bound status.",
+      "fileName": "ss_range_check.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_range_check is\n  generic (WIDTH:positive range 1 to 64:=8; SIGNED_MODE:natural range 0 to 1:=0;\n    INCLUDE_MIN:natural range 0 to 1:=1; INCLUDE_MAX:natural range 0 to 1:=1);\n  port (d,minimum,maximum:in std_logic_vector(WIDTH-1 downto 0); within,bounds_valid:out std_logic);\nend entity;\narchitecture rtl of ss_range_check is begin\n  process(d,minimum,maximum)\n    variable ordered,above,below:boolean;\n  begin\n    if SIGNED_MODE=1 then\n      ordered:=signed(minimum)<=signed(maximum); above:=signed(d)>signed(minimum); below:=signed(d)<signed(maximum);\n    else\n      ordered:=unsigned(minimum)<=unsigned(maximum); above:=unsigned(d)>unsigned(minimum); below:=unsigned(d)<unsigned(maximum);\n    end if;\n    above:=above or (INCLUDE_MIN=1 and d=minimum); below:=below or (INCLUDE_MAX=1 and d=maximum);\n    within<='0'; bounds_valid<='0';\n    if ordered then bounds_valid<='1'; if above and below then within<='1'; end if; end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "minimum",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "maximum",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "within",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "bounds_valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "SIGNED_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        },
+        {
+          "name": "INCLUDE_MIN",
+          "dataType": "natural",
+          "defaultExpr": "1",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 1
+        },
+        {
+          "name": "INCLUDE_MAX",
+          "dataType": "natural",
+          "defaultExpr": "1",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 1
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "RANGE_CHECK",
+      "displayName": "Range Check",
+      "defaultInputs": {},
+      "inputNotes": "minimum ≤ maximum จึง bounds_valid=1 · INCLUDE_MIN/MAX เลือกรวมปลายช่วง · ช่วงผิดให้ within=0"
+    },
+    "ss_clamp": {
+      "moduleKind": "vhdl",
+      "name": "ss_clamp",
+      "description": "Clamp to inclusive runtime bounds; invalid bounds pass d through with valid=0.",
+      "fileName": "ss_clamp.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_clamp is\n  generic (WIDTH:positive range 1 to 64:=8; SIGNED_MODE:natural range 0 to 1:=0);\n  port (d,minimum,maximum:in std_logic_vector(WIDTH-1 downto 0);\n    y:out std_logic_vector(WIDTH-1 downto 0); valid,clipped:out std_logic);\nend entity;\narchitecture rtl of ss_clamp is begin\n  process(d,minimum,maximum)\n    variable ordered,below,above:boolean;\n  begin\n    if SIGNED_MODE=1 then\n      ordered:=signed(minimum)<=signed(maximum); below:=signed(d)<signed(minimum); above:=signed(d)>signed(maximum);\n    else\n      ordered:=unsigned(minimum)<=unsigned(maximum); below:=unsigned(d)<unsigned(minimum); above:=unsigned(d)>unsigned(maximum);\n    end if;\n    y<=d; valid<='0'; clipped<='0';\n    if ordered then\n      valid<='1';\n      if below then y<=minimum; clipped<='1'; elsif above then y<=maximum; clipped<='1'; end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "minimum",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "maximum",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "clipped",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "SIGNED_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "CLAMP",
+      "displayName": "Clamp to Range",
+      "defaultInputs": {},
+      "inputNotes": "clipped=1 เมื่อเปลี่ยน d ไปที่ปลายช่วง · ช่วงผิดคง d และ valid=0 · signedness ของ d/bounds ต้องตรงกัน"
+    },
+    "ss_min_max": {
+      "moduleKind": "vhdl",
+      "name": "ss_min_max",
+      "description": "Return the ordered pair using configured signedness.",
+      "fileName": "ss_min_max.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_min_max is\n  generic (WIDTH:positive range 1 to 64:=8; SIGNED_MODE:natural range 0 to 1:=0);\n  port (a,b:in std_logic_vector(WIDTH-1 downto 0); minimum,maximum:out std_logic_vector(WIDTH-1 downto 0));\nend entity;\narchitecture rtl of ss_min_max is begin\n  process(a,b)\n    variable less:boolean;\n  begin\n    if SIGNED_MODE=1 then less:=signed(a)<signed(b); else less:=unsigned(a)<unsigned(b); end if;\n    minimum<=b; maximum<=a; if less then minimum<=a; maximum<=b; end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "a",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "b",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "minimum",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "maximum",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "SIGNED_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "MIN_MAX",
+      "displayName": "Minimum / Maximum",
+      "defaultInputs": {},
+      "inputNotes": "a,b → minimum,maximum · WIDTH 1–64 · signed/unsigned เลือกแยกแต่ละกล่อง"
+    }
+  }
+}

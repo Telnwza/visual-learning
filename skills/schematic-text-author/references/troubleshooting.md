@@ -32,10 +32,10 @@ An unconnected input is allowed structurally but can produce fallback logic. Sup
 From a Studio checkout, discover exact non-default pins before wiring:
 
 ```sh
-node schematic2vhdl/describe-schematic-part.cjs MUX inputs=4 width=8 selectMode=bus
-node schematic2vhdl/describe-schematic-part.cjs DFF reset=true
-node schematic2vhdl/check-schematic-text.cjs /path/to/design.sch.txt
-node schematic2vhdl/check-schematic-text.cjs /path/to/design.sch.txt /path/to/project.schproj.json
+node schematic2vhdl-v2/describe-schematic-part.cjs MUX inputs=4 width=8 selectMode=bus
+node schematic2vhdl-v2/describe-schematic-part.cjs DFF reset=true
+node schematic2vhdl-v2/check-schematic-text.cjs /path/to/design.sch.txt
+node schematic2vhdl-v2/check-schematic-text.cjs /path/to/design.sch.txt /path/to/project.schproj.json
 ```
 
 These are terminal commands, not lines to paste into the circuit. If the exported workspace has several projects, append the intended workspace project ID as the final argument to the checker; otherwise it uses the saved active project. The checker reads but does not modify the project export. Exit 0 means structural success; warnings appear in JSON. Exit 1 means failure and an error is printed to stderr.

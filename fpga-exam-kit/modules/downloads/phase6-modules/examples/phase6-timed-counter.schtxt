@@ -1,0 +1,16 @@
+format schematic-text 1
+circuit timed_count
+input clk, rst
+output result[8]
+use "CUSTOM:ss_tick" as tick_module
+use "CUSTOM:ss_counter" as count_module
+part tick @tick_module generic_DIVISOR=50000000
+part count @count_module generic_WIDTH=8
+part limit CONST value="58" width=8
+part first CONST value="0A" width=8
+connect clk -> tick.clk, count.clk
+connect rst -> tick.rst, count.rst
+connect tick.tick -> count.en
+connect first.o -> count.minimum
+connect limit.o -> count.maximum
+connect count.q -> result

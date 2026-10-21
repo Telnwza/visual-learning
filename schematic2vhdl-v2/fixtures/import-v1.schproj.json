@@ -1,0 +1,188 @@
+{
+  "version": 1,
+  "project": {
+    "name": "old_lab",
+    "topId": "main",
+    "schematics": {
+      "main": {
+        "id": "main",
+        "name": "top",
+        "components": [
+          {
+            "id": "c1",
+            "type": "IN",
+            "x": 88,
+            "y": 110,
+            "params": {
+              "name": "input_byte",
+              "width": 8
+            },
+            "label": ""
+          },
+          {
+            "id": "c2",
+            "type": "SCH:leaf",
+            "x": 275,
+            "y": 110,
+            "params": {
+              "inputOrder": [
+                "data_in"
+              ],
+              "outputOrder": [
+                "data_out"
+              ],
+              "moduleWidth": 165,
+              "moduleHeight": 88
+            },
+            "label": ""
+          },
+          {
+            "id": "c3",
+            "type": "OUT",
+            "x": 550,
+            "y": 110,
+            "params": {
+              "name": "output_byte",
+              "width": 8
+            },
+            "label": ""
+          },
+          {
+            "id": "c4",
+            "type": "MODULE_FRAME",
+            "x": 66,
+            "y": 66,
+            "params": {
+              "widthCells": 26,
+              "heightCells": 9
+            },
+            "label": ""
+          }
+        ],
+        "wires": [
+          {
+            "id": "w1",
+            "from": {
+              "cid": "c1",
+              "pid": "o"
+            },
+            "to": {
+              "cid": "c2",
+              "pid": "data_in"
+            },
+            "name": ""
+          },
+          {
+            "id": "w2",
+            "from": {
+              "cid": "c2",
+              "pid": "data_out"
+            },
+            "to": {
+              "cid": "c3",
+              "pid": "i"
+            },
+            "name": ""
+          }
+        ]
+      },
+      "leaf": {
+        "id": "leaf",
+        "name": "invert_byte",
+        "components": [
+          {
+            "id": "c1",
+            "type": "IN",
+            "x": 88,
+            "y": 88,
+            "params": {
+              "name": "data_in",
+              "width": 8
+            },
+            "label": ""
+          },
+          {
+            "id": "c2",
+            "type": "NOT",
+            "x": 242,
+            "y": 77,
+            "params": {
+              "width": 8,
+              "inputs": 1
+            },
+            "label": ""
+          },
+          {
+            "id": "c3",
+            "type": "OUT",
+            "x": 440,
+            "y": 88,
+            "params": {
+              "name": "data_out",
+              "width": 8
+            },
+            "label": ""
+          }
+        ],
+        "wires": [
+          {
+            "id": "w1",
+            "from": {
+              "cid": "c1",
+              "pid": "o"
+            },
+            "to": {
+              "cid": "c2",
+              "pid": "i0"
+            },
+            "name": ""
+          },
+          {
+            "id": "w2",
+            "from": {
+              "cid": "c2",
+              "pid": "o"
+            },
+            "to": {
+              "cid": "c3",
+              "pid": "i"
+            },
+            "name": "",
+            "pts": [
+              {
+                "x": 308,
+                "y": 99
+              },
+              {
+                "x": 374,
+                "y": 99
+              },
+              {
+                "x": 374,
+                "y": 110
+              },
+              {
+                "x": 440,
+                "y": 110
+              }
+            ],
+            "autoPts": [
+              {
+                "x": 330,
+                "y": 99
+              }
+            ],
+            "routeMode": "manual",
+            "color": "#aa44ff"
+          }
+        ]
+      }
+    },
+    "customs": {}
+  },
+  "activeId": "main",
+  "openTabs": [
+    "main",
+    "leaf"
+  ]
+}

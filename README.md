@@ -20,6 +20,8 @@ visual-learning/
 │   └── index.html
 ├── schematic2vhdl/
 │   └── index.html
+├── schematic2vhdl-v2/
+│   └── index.html
 ├── block-schematic-studio/
 │   ├── index.html
 │   ├── style.css
@@ -107,8 +109,25 @@ This keeps the site compatible with GitHub Pages project URLs and direct browser
 - Automata Studio: DFA, NFA, lambda-NFA, PDA, and Turing Machine creation and simulation, including an exact two-way Set-style / equation-style Regular Expression converter, output as a minimal DFA, compact lambda-free NFA, or Thompson lambda-NFA, DFA/NFA generation from transition equations, exact language-equivalence checking with shortest counterexamples, and randomized DFA/NFA practice in both diagram-to-Regex and equation-to-diagram directions.
 - Vector Addition Visualizer: 2D and 3D vector addition, resultant vectors, magnitude, ordering, import/export, and local browser saving.
 - Logic Gates Lab: drag-and-drop combinational circuits, live signal simulation, circuit-to-truth-table analysis, Boolean equation parsing and minimization, truth-table-to-circuit synthesis, presets, autosave, and JSON/image/table export.
-- Schematic Studio: full schematic capture with VHDL generation, FPGA-oriented components, editable routing, project import/export, and Vivado-focused workflows.
+- Schematic Studio — Original: the preserved GitHub version with schematic capture, VHDL generation and Vivado-focused workflows.
+- Schematic Studio v2: the enhanced editor with 1–64-bit components, imported/editable VHDL modules, source highlighting, draft recovery and batch port mapping.
 - Block Schematic Studio: local-first top-down digital architecture design with reusable sub-pages, real logic symbols, buses, obstacle-aware routing, autosave, JSON import/export, and SVG/PNG export.
+
+## Schematic Studio Versions
+
+- [Original](schematic2vhdl/index.html): the application is preserved byte-for-byte from GitHub `main` commit `a101f195790a4a833e98c271d1fda3a50b0807d3`.
+- [Version 2](schematic2vhdl-v2/index.html): all current enhancements and their tests live here. New work should target this directory.
+- The two versions use separate browser storage keys. Version 2 does not overwrite the original autosave or preferences. Use Save Workspace and Open to transfer a project into v2; drafts are local browser data, not part of exported project files.
+- External VHDL modules remain together in [fpga-exam-kit/modules](fpga-exam-kit/modules/README.md).
+
+Run each version's tests independently:
+
+```sh
+node --test --test-concurrency=1 schematic2vhdl/*.test.js
+node --test --test-concurrency=1 schematic2vhdl-v2/*.test.js
+```
+
+The shared Schematic Text authoring skill now targets v2. The original version's reference regression uses its frozen component catalog under `schematic2vhdl/fixtures/`.
 
 ## Logic Gates Lab Tests
 

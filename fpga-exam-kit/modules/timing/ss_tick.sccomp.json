@@ -1,0 +1,60 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_tick",
+  "customs": {
+    "ss_tick": {
+      "moduleKind": "vhdl",
+      "name": "ss_tick",
+      "description": "One tick every DIVISOR enabled rising edges; reset clears phase; DIVISOR=1 gives an event each enabled edge.",
+      "fileName": "ss_tick.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_tick is\n  generic (DIVISOR:positive range 1 to 2147483647:=50000000);\n  port (clk,rst,en:in std_logic; tick:out std_logic);\nend entity;\narchitecture rtl of ss_tick is\n  signal count:natural range 0 to DIVISOR-1:=0;\n  signal event_tick:std_logic:='0';\nbegin\n  tick <= event_tick;\n  process(clk) begin\n    if rising_edge(clk) then\n      event_tick<='0';\n      if rst='1' then count<=0;\n      elsif en='1' then\n        if count=DIVISOR-1 then count<=0; event_tick<='1';\n        else count<=count+1; end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "tick",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "DIVISOR",
+          "dataType": "positive",
+          "defaultExpr": "50000000",
+          "minExpr": "1",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000000
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "TICK",
+      "displayName": "Tick Generator",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1
+      },
+      "inputNotes": "50 MHz / DIVISOR = ความถี่ tick · DIVISOR=50000000 ได้ 1 Hz · ใช้ tick ต่อ en ของโมดูลที่ใช้ clk หลักร่วมกัน"
+    }
+  }
+}

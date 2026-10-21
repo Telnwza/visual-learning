@@ -1,0 +1,66 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_clock_divider",
+  "customs": {
+    "ss_clock_divider": {
+      "moduleKind": "vhdl",
+      "name": "ss_clock_divider",
+      "description": "Integer division: low=ceil(D/2), high=floor(D/2); tick marks the end of each period; disable holds clock level and phase.",
+      "fileName": "ss_clock_divider.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_clock_divider is\n  generic (DIVISOR:positive range 2 to 2147483647:=50000000);\n  port (clk,rst,en:in std_logic; clk_out,tick:out std_logic);\nend entity;\narchitecture rtl of ss_clock_divider is\n  constant LOW_CYCLES:positive:=DIVISOR-DIVISOR/2;\n  signal count:natural range 0 to DIVISOR-1:=0;\n  signal level,event_tick:std_logic:='0';\nbegin\n  clk_out <= level; tick <= event_tick;\n  process(clk) begin\n    if rising_edge(clk) then\n      event_tick<='0';\n      if rst='1' then count<=0; level<='0';\n      elsif en='1' then\n        if count=LOW_CYCLES-1 then level<='1'; end if;\n        if count=DIVISOR-1 then count<=0; level<='0'; event_tick<='1';\n        else count<=count+1; end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "clk_out",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "tick",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "DIVISOR",
+          "dataType": "positive",
+          "defaultExpr": "50000000",
+          "minExpr": "2",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000000
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "DIVIDER",
+      "displayName": "Clock Divider",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1
+      },
+      "inputNotes": "ต่อ clk หลัก · DIVISOR ≥ 2 · ความถี่ 50 MHz / DIVISOR · หารเลขคี่ duty ไม่เท่ากับ 50% · tick เหมาะสำหรับต่อ en โดยใช้ clk เดิมร่วมกัน"
+    }
+  }
+}

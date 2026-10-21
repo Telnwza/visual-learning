@@ -1,0 +1,140 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_counter",
+  "customs": {
+    "ss_counter": {
+      "moduleKind": "vhdl",
+      "name": "ss_counter",
+      "description": "Inclusive unsigned bounds; reset → load → enable; WRAP chooses wrap or stop.",
+      "fileName": "ss_counter.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_counter is\n  generic (WIDTH:positive range 1 to 64:=8; WRAP:natural range 0 to 1:=1);\n  port (clk,rst,en,load,down:in std_logic;\n    minimum,maximum,load_value:in std_logic_vector(WIDTH-1 downto 0);\n    q:out std_logic_vector(WIDTH-1 downto 0);\n    valid,terminal,wrapped:out std_logic);\nend entity;\narchitecture rtl of ss_counter is\n  signal value:unsigned(WIDTH-1 downto 0):=(others=>'0');\n  signal wrap_event:std_logic:='0';\nbegin\n  q <= std_logic_vector(value);\n  valid <= '1' when unsigned(minimum)<=unsigned(maximum) and value>=unsigned(minimum) and value<=unsigned(maximum) else '0';\n  terminal <= '1' when unsigned(minimum)<=unsigned(maximum) and\n    ((down='0' and value=unsigned(maximum)) or (down='1' and value=unsigned(minimum))) else '0';\n  wrapped <= wrap_event;\n  process(clk)\n    variable lo,hi,first:unsigned(WIDTH-1 downto 0);\n  begin\n    if rising_edge(clk) then\n      lo:=unsigned(minimum); hi:=unsigned(maximum);\n      first:=lo; if down='1' then first:=hi; end if;\n      wrap_event<='0';\n      if rst='1' then value<=first;\n      elsif lo<=hi then\n        if load='1' then\n          if unsigned(load_value)<lo then value<=lo;\n          elsif unsigned(load_value)>hi then value<=hi;\n          else value<=unsigned(load_value); end if;\n        elsif en='1' then\n          if value<lo or value>hi then value<=first;\n          elsif (down='0' and value=hi) or (down='1' and value=lo) then\n            if WRAP=1 then value<=first; wrap_event<='1'; end if;\n          elsif down='1' then value<=value-1;\n          else value<=value+1; end if;\n        end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "load",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "down",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "minimum",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "maximum",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "load_value",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "q",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "terminal",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "wrapped",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "WRAP",
+          "dataType": "natural",
+          "defaultExpr": "1",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 1
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "COUNTER",
+      "displayName": "Synchronous Counter",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "load": 0,
+        "down": 0,
+        "minimum": 0,
+        "load_value": 0
+      },
+      "inputNotes": "ต่อ clk หลัก · maximum ต่อ CONST · down=0 ขึ้น/1 ลง · rst เลือกต้นช่วงตามทิศทาง · load clamp เข้าช่วงและทำงานแม้ en=0"
+    }
+  }
+}

@@ -15,7 +15,7 @@ Use these references according to the circuit being requested:
 
 1. Identify input/output widths, intended behavior, clock/reset rules and any existing subcircuit dependencies. Ask only for missing information that materially affects the requested circuit.
 2. Choose actual supported parts and work out equations or a state transition table. No built-in counter, register, FSM or adder should be invented.
-3. Confirm exact configured pins. When parameters change, use `node schematic2vhdl/describe-schematic-part.cjs TYPE key=value ...` from the checkout. For example, `MUX inputs=4 width=8 selectMode=bus` has a 2-bit s pin, not s0/s1. Reference variants change one setting at a time; query combinations.
+3. Confirm exact configured pins. When parameters change, use `node schematic2vhdl-v2/describe-schematic-part.cjs TYPE key=value ...` from the checkout. For example, `MUX inputs=4 width=8 selectMode=bus` has a 2-bit s pin, not s0/s1. Reference variants change one setting at a time; query combinations.
 4. Write the header, circuit name, library bindings, I/O declarations, parts, then connections. Keep library aliases before their instances. Use simple distinct ASCII names and make bus splits/merges explicit.
 5. Run the checker, fix each error, re-run, and resolve or explain warnings. For sequential or arithmetic designs, use a behavioral testbench when available and appropriate. Never treat parse success as behavior proof.
 6. Return the `.sch.txt` artifact and concise usage/verification details.
@@ -29,7 +29,7 @@ Prefer native parts and live subcircuit instances. Do not emit project IDs for n
 When the Studio checkout is available, validate with its actual parser:
 
 ```sh
-node /path/to/visual-learning/schematic2vhdl/check-schematic-text.cjs circuit.sch.txt [project.schproj.json] [workspace-project-id]
+node /path/to/visual-learning/schematic2vhdl-v2/check-schematic-text.cjs circuit.sch.txt [project.schproj.json] [workspace-project-id]
 ```
 
 Resolve the checkout from the current workspace or user context; do not assume a fixed machine path. Existing subcircuits require the actual project export for CLI validation, or validation in the destination Studio project. Fix errors, and explain intentional unconnected input warnings. The CLI validates structure; it does not simulate behavior or validate all logic inside supplied subcircuits. Use GHDL/testbenches for behavior when warranted and available, and state precisely what was checked.

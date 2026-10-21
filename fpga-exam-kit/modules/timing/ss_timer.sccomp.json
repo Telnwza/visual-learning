@@ -1,0 +1,116 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_timer",
+  "customs": {
+    "ss_timer": {
+      "moduleKind": "vhdl",
+      "name": "ss_timer",
+      "description": "Start captures duration; done follows duration enabled progress edges; pulse=busy; zero duration completes at start.",
+      "fileName": "ss_timer.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_timer is\n  generic (WIDTH:positive range 1 to 64:=32; RETRIGGER:natural range 0 to 1:=1);\n  port (clk,rst,en,start,cancel:in std_logic;\n    duration:in std_logic_vector(WIDTH-1 downto 0);\n    busy,done,pulse:out std_logic;\n    remaining:out std_logic_vector(WIDTH-1 downto 0));\nend entity;\narchitecture rtl of ss_timer is\n  signal active,completion:std_logic:='0';\n  signal left_cycles:unsigned(WIDTH-1 downto 0):=(others=>'0');\nbegin\n  busy <= active; pulse <= active; done <= completion;\n  remaining <= std_logic_vector(left_cycles);\n  process(clk) begin\n    if rising_edge(clk) then\n      completion<='0';\n      if rst='1' or cancel='1' then active<='0'; left_cycles<=(others=>'0');\n      elsif start='1' and (active='0' or RETRIGGER=1) then\n        left_cycles<=unsigned(duration);\n        if unsigned(duration)=0 then active<='0'; completion<='1';\n        else active<='1'; end if;\n      elsif en='1' and active='1' then\n        if left_cycles=1 then active<='0'; left_cycles<=(others=>'0'); completion<='1';\n        else left_cycles<=left_cycles-1; end if;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "start",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "cancel",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "duration",
+          "dir": "in",
+          "width": 32,
+          "dataType": "std_logic_vector",
+          "left": 31,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "busy",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "done",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "pulse",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "remaining",
+          "dir": "out",
+          "width": 32,
+          "dataType": "std_logic_vector",
+          "left": 31,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "32",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 32
+        },
+        {
+          "name": "RETRIGGER",
+          "dataType": "natural",
+          "defaultExpr": "1",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 1
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "TIMER",
+      "displayName": "Timer / Delay / One-shot",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "start": 0,
+        "cancel": 0
+      },
+      "inputNotes": "ต่อ clk หลัก · duration ต่อบัส/CONST · start ใช้ pulse 1 clock · rst/cancel ยกเลิก · done ยาว 1 clk · en=0 หยุดเวลาและค้าง pulse · RETRIGGER เลือกเริ่มใหม่ขณะ busy"
+    }
+  }
+}

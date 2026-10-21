@@ -35,7 +35,7 @@ for(const [file,signals,mapping,stimulus] of cases)test('skill example '+file+' 
 });
 test('generated component reference matches current registry',()=>{
  const actual=execFileSync(process.execPath,[path.join(__dirname,'generate-schematic-text-reference.cjs')],{encoding:'utf8'});
- assert.equal(fs.readFileSync(path.join(skill,'references/components.md'),'utf8'),actual);
+ assert.equal(fs.readFileSync(path.join(__dirname,'fixtures/components-original.md'),'utf8'),actual);
 });
 test('part query resolves parameter-dependent pins and rejects bad settings',()=>{
  const cli=path.join(__dirname,'describe-schematic-part.cjs');

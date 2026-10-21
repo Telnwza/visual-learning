@@ -1,0 +1,359 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "customs": {
+    "ss_bus_slice": {
+      "moduleKind": "vhdl",
+      "name": "ss_bus_slice",
+      "description": "y[j]=d[LSB+j]; OUT_WIDTH≤IN_WIDTH and LSB+OUT_WIDTH≤IN_WIDTH.",
+      "fileName": "ss_bus_slice.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_bus_slice is\n  generic (IN_WIDTH:positive range 1 to 64:=16;\n    OUT_WIDTH:positive range 1 to IN_WIDTH:=8;\n    LSB:natural range 0 to IN_WIDTH-OUT_WIDTH:=0);\n  port (d:in std_logic_vector(IN_WIDTH-1 downto 0);\n    y:out std_logic_vector(OUT_WIDTH-1 downto 0));\nend entity;\narchitecture rtl of ss_bus_slice is begin\n  y <= d(LSB+OUT_WIDTH-1 downto LSB);\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 16,
+          "dataType": "std_logic_vector",
+          "left": 15,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "IN_WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "OUT_WIDTH-1",
+          "rightExpr": "0"
+        }
+      ],
+      "generics": [
+        {
+          "name": "IN_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "16",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 16
+        },
+        {
+          "name": "OUT_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "IN_WIDTH",
+          "defaultValue": 8
+        },
+        {
+          "name": "LSB",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "IN_WIDTH-OUT_WIDTH",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "SLICE",
+      "displayName": "Bus Slice",
+      "defaultInputs": {},
+      "inputNotes": "Combinational · ลด OUT_WIDTH ก่อนลด IN_WIDTH · LSB คือบิตต้นทางที่ต่อกับ y[0]"
+    },
+    "ss_bus_concat": {
+      "moduleKind": "vhdl",
+      "name": "ss_bus_concat",
+      "description": "y=a & b; a occupies the upper bits; combined width is at most 64.",
+      "fileName": "ss_bus_concat.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_bus_concat is\n  generic (A_WIDTH:positive range 1 to 63:=8; B_WIDTH:positive range 1 to 64-A_WIDTH:=8);\n  port (a:in std_logic_vector(A_WIDTH-1 downto 0);\n    b:in std_logic_vector(B_WIDTH-1 downto 0);\n    y:out std_logic_vector(A_WIDTH+B_WIDTH-1 downto 0));\nend entity;\narchitecture rtl of ss_bus_concat is begin\n  y <= a & b;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "a",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "A_WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "b",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "B_WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 16,
+          "dataType": "std_logic_vector",
+          "left": 15,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "A_WIDTH+B_WIDTH-1",
+          "rightExpr": "0"
+        }
+      ],
+      "generics": [
+        {
+          "name": "A_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "63",
+          "defaultValue": 8
+        },
+        {
+          "name": "B_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64-A_WIDTH",
+          "defaultValue": 8
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "CONCAT",
+      "displayName": "Bus Concatenate",
+      "defaultInputs": {},
+      "inputNotes": "Combinational · A_WIDTH+B_WIDTH ≤ 64 · a อยู่ฝั่ง MSB, b อยู่ฝั่ง LSB"
+    },
+    "ss_bus_reverse": {
+      "moduleKind": "vhdl",
+      "name": "ss_bus_reverse",
+      "description": "y[i]=d[WIDTH-1-i].",
+      "fileName": "ss_bus_reverse.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_bus_reverse is\n  generic (WIDTH:positive range 1 to 64:=8);\n  port (d:in std_logic_vector(WIDTH-1 downto 0);\n    y:out std_logic_vector(WIDTH-1 downto 0));\nend entity;\narchitecture rtl of ss_bus_reverse is begin\n  bits:for i in 0 to WIDTH-1 generate y(i)<=d(WIDTH-1-i); end generate;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "REVERSE",
+      "displayName": "Reverse Bit Order",
+      "defaultInputs": {},
+      "inputNotes": "Combinational · กลับลำดับ bit ทั้งบัส · WIDTH 1–64"
+    },
+    "ss_bus_zero_extend": {
+      "moduleKind": "vhdl",
+      "name": "ss_bus_zero_extend",
+      "description": "Unsigned extension: preserve d and fill new upper bits with zero.",
+      "fileName": "ss_bus_zero_extend.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_bus_zero_extend is\n  generic (IN_WIDTH:positive range 1 to 64:=8; OUT_WIDTH:positive range IN_WIDTH to 64:=16);\n  port (d:in std_logic_vector(IN_WIDTH-1 downto 0);\n    y:out std_logic_vector(OUT_WIDTH-1 downto 0));\nend entity;\narchitecture rtl of ss_bus_zero_extend is begin\n  y <= std_logic_vector(resize(unsigned(d),OUT_WIDTH));\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "IN_WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 16,
+          "dataType": "std_logic_vector",
+          "left": 15,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "OUT_WIDTH-1",
+          "rightExpr": "0"
+        }
+      ],
+      "generics": [
+        {
+          "name": "IN_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "OUT_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "16",
+          "minExpr": "IN_WIDTH",
+          "maxExpr": "64",
+          "defaultValue": 16
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "ZERO_EXTEND",
+      "displayName": "Zero Extend",
+      "defaultInputs": {},
+      "inputNotes": "Combinational · OUT_WIDTH ≥ IN_WIDTH · ขยาย OUT_WIDTH ก่อนเพิ่ม IN_WIDTH"
+    },
+    "ss_bus_sign_extend": {
+      "moduleKind": "vhdl",
+      "name": "ss_bus_sign_extend",
+      "description": "Two's-complement extension: preserve d and repeat its sign bit into the new upper bits.",
+      "fileName": "ss_bus_sign_extend.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_bus_sign_extend is\n  generic (IN_WIDTH:positive range 1 to 64:=8; OUT_WIDTH:positive range IN_WIDTH to 64:=16);\n  port (d:in std_logic_vector(IN_WIDTH-1 downto 0);\n    y:out std_logic_vector(OUT_WIDTH-1 downto 0));\nend entity;\narchitecture rtl of ss_bus_sign_extend is begin\n  y <= std_logic_vector(resize(signed(d),OUT_WIDTH));\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "IN_WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 16,
+          "dataType": "std_logic_vector",
+          "left": 15,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "OUT_WIDTH-1",
+          "rightExpr": "0"
+        }
+      ],
+      "generics": [
+        {
+          "name": "IN_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "OUT_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "16",
+          "minExpr": "IN_WIDTH",
+          "maxExpr": "64",
+          "defaultValue": 16
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "SIGN_EXTEND",
+      "displayName": "Sign Extend",
+      "defaultInputs": {},
+      "inputNotes": "Combinational · OUT_WIDTH ≥ IN_WIDTH · ขยายเลข signed โดยใช้ MSB เดิมเป็น sign"
+    },
+    "ss_bus_truncate": {
+      "moduleKind": "vhdl",
+      "name": "ss_bus_truncate",
+      "description": "Keep the low OUT_WIDTH bits; lost is the OR of discarded high bits.",
+      "fileName": "ss_bus_truncate.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_bus_truncate is\n  generic (IN_WIDTH:positive range 1 to 64:=16; OUT_WIDTH:positive range 1 to IN_WIDTH:=8);\n  port (d:in std_logic_vector(IN_WIDTH-1 downto 0);\n    y:out std_logic_vector(OUT_WIDTH-1 downto 0); lost:out std_logic);\nend entity;\narchitecture rtl of ss_bus_truncate is begin\n  y <= d(OUT_WIDTH-1 downto 0);\n  process(d)\n    variable discarded:std_logic;\n  begin\n    discarded:='0';\n    for i in OUT_WIDTH to IN_WIDTH-1 loop discarded:=discarded or d(i); end loop;\n    lost<=discarded;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 16,
+          "dataType": "std_logic_vector",
+          "left": 15,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "IN_WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "OUT_WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "lost",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "IN_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "16",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 16
+        },
+        {
+          "name": "OUT_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "IN_WIDTH",
+          "defaultValue": 8
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "TRUNCATE",
+      "displayName": "Truncate Low Bits",
+      "defaultInputs": {},
+      "inputNotes": "Combinational · OUT_WIDTH ≤ IN_WIDTH · lost=1 เมื่อมี bit 1 ถูกทิ้ง · ไม่ใช่ signed-overflow flag"
+    }
+  }
+}

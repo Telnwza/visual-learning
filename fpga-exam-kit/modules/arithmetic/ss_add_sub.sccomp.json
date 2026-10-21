@@ -1,0 +1,120 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_add_sub",
+  "customs": {
+    "ss_add_sub": {
+      "moduleKind": "vhdl",
+      "name": "ss_add_sub",
+      "description": "WIDTH-bit result with carry/borrow input and independent unsigned/signed flags.",
+      "fileName": "ss_add_sub.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_add_sub is\n  generic (WIDTH:positive range 1 to 64:=8; SUBTRACT:natural range 0 to 1:=0; SIGNED_MODE:natural range 0 to 1:=0);\n  port (a,b:in std_logic_vector(WIDTH-1 downto 0); cin:in std_logic;\n    y:out std_logic_vector(WIDTH-1 downto 0); carry,borrow,overflow,zero,negative:out std_logic);\nend entity;\narchitecture rtl of ss_add_sub is begin\n  process(a,b,cin)\n    variable u:unsigned(WIDTH downto 0);\n    variable s:signed(WIDTH+1 downto 0);\n    variable result:std_logic_vector(WIDTH-1 downto 0);\n  begin\n    carry<='0'; borrow<='0'; overflow<='0'; negative<='0';\n    if SUBTRACT=0 then\n      u:=resize(unsigned(a),WIDTH+1)+resize(unsigned(b),WIDTH+1);\n      s:=resize(signed(a),WIDTH+2)+resize(signed(b),WIDTH+2);\n      if cin='1' then u:=u+1; s:=s+1; end if;\n      carry<=u(WIDTH);\n    else\n      u:=resize(unsigned(a),WIDTH+1)-resize(unsigned(b),WIDTH+1);\n      s:=resize(signed(a),WIDTH+2)-resize(signed(b),WIDTH+2);\n      if cin='1' then u:=u-1; s:=s-1; end if;\n      borrow<=u(WIDTH);\n    end if;\n    result:=std_logic_vector(u(WIDTH-1 downto 0)); y<=result;\n    if SIGNED_MODE=1 then\n      negative<=result(WIDTH-1);\n      if s/=resize(signed(result),WIDTH+2) then overflow<='1'; end if;\n    end if;\n    zero<='0'; if unsigned(result)=0 then zero<='1'; end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "a",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "b",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "cin",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "carry",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "borrow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "overflow",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "negative",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "SUBTRACT",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        },
+        {
+          "name": "SIGNED_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "ADD_SUB",
+      "displayName": "Add / Subtract",
+      "defaultInputs": {
+        "cin": 0
+      },
+      "inputNotes": "SUBTRACT=0 บวก, 1 ลบ · cin เป็น carry in/borrow in ตามโหมด · carry/borrow ใช้ unsigned, overflow ใช้ signed · y คือ WIDTH บิตต่ำ"
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_bus_reverse",
+  "customs": {
+    "ss_bus_reverse": {
+      "moduleKind": "vhdl",
+      "name": "ss_bus_reverse",
+      "description": "y[i]=d[WIDTH-1-i].",
+      "fileName": "ss_bus_reverse.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_bus_reverse is\n  generic (WIDTH:positive range 1 to 64:=8);\n  port (d:in std_logic_vector(WIDTH-1 downto 0);\n    y:out std_logic_vector(WIDTH-1 downto 0));\nend entity;\narchitecture rtl of ss_bus_reverse is begin\n  bits:for i in 0 to WIDTH-1 generate y(i)<=d(WIDTH-1-i); end generate;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "REVERSE",
+      "displayName": "Reverse Bit Order",
+      "defaultInputs": {},
+      "inputNotes": "Combinational · กลับลำดับ bit ทั้งบัส · WIDTH 1–64"
+    }
+  }
+}

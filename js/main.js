@@ -25,8 +25,8 @@ const tools = [
   },
   {
     number: "04",
-    title: "Schematic Studio",
-    description: "Design digital schematics and generate VHDL for Spartan-7 and Vivado.",
+    title: "Schematic Studio — Original",
+    description: "The original schematic editor and VHDL generator for Spartan-7 and Vivado.",
     category: "FPGA design",
     path: "./schematic2vhdl/",
     topics: ["VHDL", "Schematic", "FPGA", "Spartan-7", "Vivado"],
@@ -38,6 +38,14 @@ const tools = [
     category: "Digital systems",
     path: "./block-schematic-studio/",
     topics: ["Schematic", "FPGA", "Logic Symbols", "Buses", "Sub-pages"],
+  },
+  {
+    number: "06",
+    title: "Schematic Studio v2",
+    description: "Build with 64-bit components, editable VHDL modules, draft recovery, and faster wiring.",
+    category: "FPGA design",
+    path: "./schematic2vhdl-v2/",
+    topics: ["VHDL Modules", "64-bit", "Schematic", "FPGA", "Vivado"],
   },
 ];
 
@@ -105,7 +113,7 @@ document.addEventListener("keydown", (event) => {
     searchInput.select();
   }
 
-  if (event.altKey && /^[1-5]$/.test(event.key) && !isEditing) {
+  if (event.altKey && /^[1-9]$/.test(event.key) && !isEditing) {
     const tool = tools[Number(event.key) - 1];
     if (tool) window.location.href = tool.path;
   }

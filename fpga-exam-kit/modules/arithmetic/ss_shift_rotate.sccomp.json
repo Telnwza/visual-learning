@@ -1,0 +1,80 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_shift_rotate",
+  "customs": {
+    "ss_shift_rotate": {
+      "moduleKind": "vhdl",
+      "name": "ss_shift_rotate",
+      "description": "Logical/arithmetic shifts and bit rotations; seven-bit unsigned amount supports 0–127.",
+      "fileName": "ss_shift_rotate.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_shift_rotate is\n  generic (WIDTH:positive range 1 to 64:=8; OPERATION:natural range 0 to 4:=0);\n  port (d:in std_logic_vector(WIDTH-1 downto 0); amount:in std_logic_vector(6 downto 0);\n    y:out std_logic_vector(WIDTH-1 downto 0); zero:out std_logic);\nend entity;\narchitecture rtl of ss_shift_rotate is begin\n  process(d,amount)\n    variable result:std_logic_vector(WIDTH-1 downto 0);\n    variable count:natural range 0 to 127;\n  begin\n    result:=(others=>'0'); zero<='0';\n    if not is_x(amount) then\n      count:=to_integer(unsigned(amount));\n      case OPERATION is\n        when 0=>result:=std_logic_vector(shift_left(unsigned(d),count));\n        when 1=>result:=std_logic_vector(shift_right(unsigned(d),count));\n        when 2=>result:=std_logic_vector(shift_right(signed(d),count));\n        when 3=>result:=std_logic_vector(rotate_left(unsigned(d),count));\n        when others=>result:=std_logic_vector(rotate_right(unsigned(d),count));\n      end case;\n      if unsigned(result)=0 then zero<='1'; end if;\n    else result:=(others=>'X'); end if;\n    y<=result;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "amount",
+          "dir": "in",
+          "width": 7,
+          "dataType": "std_logic_vector",
+          "left": 6,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "6",
+          "rightExpr": "0"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "zero",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        },
+        {
+          "name": "OPERATION",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "4",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "SHIFT_ROTATE",
+      "displayName": "Shift / Rotate",
+      "defaultInputs": {},
+      "inputNotes": "amount 7 bit · shift ≥ WIDTH เติม 0/sign · rotate ใช้ amount mod WIDTH · arithmetic right รักษา sign bit"
+    }
+  }
+}

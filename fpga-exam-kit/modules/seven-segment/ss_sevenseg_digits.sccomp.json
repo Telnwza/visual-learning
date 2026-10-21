@@ -1,0 +1,109 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_sevenseg_digits",
+  "customs": {
+    "ss_sevenseg_digits": {
+      "moduleKind": "vhdl",
+      "name": "ss_sevenseg_digits",
+      "description": "Pack 1–16 decimal/HEX digits into active-high pattern bytes. Byte i selects common i; nibble i is digit i.",
+      "fileName": "ss_sevenseg_digits.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_sevenseg_digits is\n  generic (DIGITS:positive range 1 to 16:=4; HEX_MODE:natural range 0 to 1:=0);\n  port (digits_in:in std_logic_vector(63 downto 0); blank,dot:in std_logic_vector(DIGITS-1 downto 0);\n    patterns_lo,patterns_hi:out std_logic_vector(63 downto 0); valid:out std_logic_vector(DIGITS-1 downto 0));\nend entity;\narchitecture rtl of ss_sevenseg_digits is\n  type patterns is array(0 to 15) of std_logic_vector(6 downto 0);\n  constant lut:patterns:=(\"0111111\",\"0000110\",\"1011011\",\"1001111\",\"1100110\",\"1101101\",\"1111101\",\"0000111\",\"1111111\",\"1101111\",\"1110111\",\"1111100\",\"0111001\",\"1011110\",\"1111001\",\"1110001\");\nbegin\n  process(digits_in,blank,dot)\n    variable packed:std_logic_vector(127 downto 0); variable nibble:std_logic_vector(3 downto 0);\n    variable n:natural range 0 to 15;\n  begin\n    packed:=(others=>'0'); valid<=(others=>'0');\n    for i in 0 to DIGITS-1 loop\n      nibble:=digits_in(4*i+3 downto 4*i);\n      if blank(i)='0' and not is_x(nibble) then\n        n:=to_integer(unsigned(nibble));\n        if HEX_MODE=1 or n<10 then\n          packed(8*i+6 downto 8*i):=lut(n); packed(8*i+7):=dot(i); valid(i)<='1';\n        end if;\n      end if;\n    end loop;\n    patterns_lo<=packed(63 downto 0); patterns_hi<=packed(127 downto 64);\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "digits_in",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "63",
+          "rightExpr": "0"
+        },
+        {
+          "name": "blank",
+          "dir": "in",
+          "width": 4,
+          "dataType": "std_logic_vector",
+          "left": 3,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "DIGITS-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "dot",
+          "dir": "in",
+          "width": 4,
+          "dataType": "std_logic_vector",
+          "left": 3,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "DIGITS-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "patterns_lo",
+          "dir": "out",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "63",
+          "rightExpr": "0"
+        },
+        {
+          "name": "patterns_hi",
+          "dir": "out",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "63",
+          "rightExpr": "0"
+        },
+        {
+          "name": "valid",
+          "dir": "out",
+          "width": 4,
+          "dataType": "std_logic_vector",
+          "left": 3,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "DIGITS-1",
+          "rightExpr": "0"
+        }
+      ],
+      "generics": [
+        {
+          "name": "DIGITS",
+          "dataType": "positive",
+          "defaultExpr": "4",
+          "minExpr": "1",
+          "maxExpr": "16",
+          "defaultValue": 4
+        },
+        {
+          "name": "HEX_MODE",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "SEVENSEG_DIGITS",
+      "inputNotes": "Pack 1–16 decimal/HEX digits into active-high pattern bytes. Byte i selects common i; nibble i is digit i.",
+      "defaultInputs": {
+        "blank": 0,
+        "dot": 0
+      }
+    }
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_bus_truncate",
+  "customs": {
+    "ss_bus_truncate": {
+      "moduleKind": "vhdl",
+      "name": "ss_bus_truncate",
+      "description": "Keep the low OUT_WIDTH bits; lost is the OR of discarded high bits.",
+      "fileName": "ss_bus_truncate.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_bus_truncate is\n  generic (IN_WIDTH:positive range 1 to 64:=16; OUT_WIDTH:positive range 1 to IN_WIDTH:=8);\n  port (d:in std_logic_vector(IN_WIDTH-1 downto 0);\n    y:out std_logic_vector(OUT_WIDTH-1 downto 0); lost:out std_logic);\nend entity;\narchitecture rtl of ss_bus_truncate is begin\n  y <= d(OUT_WIDTH-1 downto 0);\n  process(d)\n    variable discarded:std_logic;\n  begin\n    discarded:='0';\n    for i in OUT_WIDTH to IN_WIDTH-1 loop discarded:=discarded or d(i); end loop;\n    lost<=discarded;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 16,
+          "dataType": "std_logic_vector",
+          "left": 15,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "IN_WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "y",
+          "dir": "out",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "OUT_WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "lost",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "IN_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "16",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 16
+        },
+        {
+          "name": "OUT_WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "IN_WIDTH",
+          "defaultValue": 8
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "TRUNCATE",
+      "displayName": "Truncate Low Bits",
+      "defaultInputs": {},
+      "inputNotes": "Combinational · OUT_WIDTH ≤ IN_WIDTH · lost=1 เมื่อมี bit 1 ถูกทิ้ง · ไม่ใช่ signed-overflow flag"
+    }
+  }
+}

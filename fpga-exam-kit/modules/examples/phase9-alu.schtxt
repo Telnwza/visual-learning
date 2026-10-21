@@ -1,0 +1,26 @@
+format schematic-text 1
+circuit alu64_lab
+input clk, rst, en, start, opcode[3], a[64], b[64], cin
+output y[64], result_hi[64], busy, done, valid, carry, borrow, overflow, divide_by_zero, zero, negative, invalid_op
+use "CUSTOM:ss_alu" as alu
+part calculation @alu generic_WIDTH=64 generic_SIGNED_MODE=1
+connect clk -> calculation.clk
+connect rst -> calculation.rst
+connect en -> calculation.en
+connect start -> calculation.start
+connect opcode -> calculation.opcode
+connect a -> calculation.a
+connect b -> calculation.b
+connect cin -> calculation.cin
+connect calculation.y -> y
+connect calculation.result_hi -> result_hi
+connect calculation.busy -> busy
+connect calculation.done -> done
+connect calculation.valid -> valid
+connect calculation.carry -> carry
+connect calculation.borrow -> borrow
+connect calculation.overflow -> overflow
+connect calculation.divide_by_zero -> divide_by_zero
+connect calculation.zero -> zero
+connect calculation.negative -> negative
+connect calculation.invalid_op -> invalid_op

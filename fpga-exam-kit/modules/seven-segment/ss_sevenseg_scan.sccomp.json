@@ -1,0 +1,151 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_sevenseg_scan",
+  "customs": {
+    "ss_sevenseg_scan": {
+      "moduleKind": "vhdl",
+      "name": "ss_sevenseg_scan",
+      "description": "Share the main clock. Two blank clocks per slot prevent ghosting. Frame snapshots at wrap. en=0 blanks and restarts scan.",
+      "fileName": "ss_sevenseg_scan.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nuse ieee.numeric_std.all;\nentity ss_sevenseg_scan is\n  generic (DIGITS:positive range 1 to 16:=4; SLOT_CYCLES:positive range 3 to 2147483647:=50000;\n    SEG_ACTIVE_LOW:natural range 0 to 1:=0; DIGIT_ACTIVE_LOW:natural range 0 to 1:=0);\n  port (clk,rst,en:in std_logic; patterns_lo,patterns_hi:in std_logic_vector(63 downto 0);\n    segment:out std_logic_vector(6 downto 0); dp:out std_logic; digit:out std_logic_vector(DIGITS-1 downto 0);\n    index:out std_logic_vector(3 downto 0); slot_tick,frame_tick:out std_logic);\nend entity;\narchitecture rtl of ss_sevenseg_scan is\n  signal frame:std_logic_vector(127 downto 0):=(others=>'0');\n  signal pattern:std_logic_vector(7 downto 0):=(others=>'0');\n  signal running:std_logic:='0';\n  signal cell:natural range 0 to DIGITS-1:=0;\n  signal phase:natural range 0 to SLOT_CYCLES-1:=0;\nbegin\n  index<=std_logic_vector(to_unsigned(cell,4));\n  process(pattern,running,cell,phase,en,rst)\n    variable common:std_logic_vector(DIGITS-1 downto 0); variable p:std_logic_vector(7 downto 0);\n  begin\n    common:=(others=>'0'); p:=(others=>'0');\n    if running='1' and en='1' and rst='0' then\n      p:=pattern;\n      if phase>=2 then common(cell):='1'; end if;\n    end if;\n    if SEG_ACTIVE_LOW=1 then segment<=not p(6 downto 0); dp<=not p(7); else segment<=p(6 downto 0); dp<=p(7); end if;\n    if DIGIT_ACTIVE_LOW=1 then digit<=not common; else digit<=common; end if;\n  end process;\n  process(clk)\n  begin\n    if rising_edge(clk) then\n      slot_tick<='0'; frame_tick<='0';\n      if rst='1' or en/='1' then running<='0'; cell<=0; phase<=0; pattern<=(others=>'0');\n      elsif running='0' then\n        frame<=patterns_hi & patterns_lo; running<='1'; cell<=0; phase<=0; slot_tick<='1'; frame_tick<='1';\n      elsif phase=SLOT_CYCLES-1 then\n        phase<=0; slot_tick<='1';\n        if cell=DIGITS-1 then cell<=0; frame<=patterns_hi & patterns_lo; frame_tick<='1'; else cell<=cell+1; end if;\n      else\n        if phase=0 then pattern<=frame(8*cell+7 downto 8*cell); end if;\n        phase<=phase+1;\n      end if;\n    end if;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "rst",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "en",
+          "dir": "in",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "patterns_lo",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "63",
+          "rightExpr": "0"
+        },
+        {
+          "name": "patterns_hi",
+          "dir": "in",
+          "width": 64,
+          "dataType": "std_logic_vector",
+          "left": 63,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "63",
+          "rightExpr": "0"
+        },
+        {
+          "name": "segment",
+          "dir": "out",
+          "width": 7,
+          "dataType": "std_logic_vector",
+          "left": 6,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "6",
+          "rightExpr": "0"
+        },
+        {
+          "name": "dp",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "digit",
+          "dir": "out",
+          "width": 4,
+          "dataType": "std_logic_vector",
+          "left": 3,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "DIGITS-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "index",
+          "dir": "out",
+          "width": 4,
+          "dataType": "std_logic_vector",
+          "left": 3,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "3",
+          "rightExpr": "0"
+        },
+        {
+          "name": "slot_tick",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "frame_tick",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "DIGITS",
+          "dataType": "positive",
+          "defaultExpr": "4",
+          "minExpr": "1",
+          "maxExpr": "16",
+          "defaultValue": 4
+        },
+        {
+          "name": "SLOT_CYCLES",
+          "dataType": "positive",
+          "defaultExpr": "50000",
+          "minExpr": "3",
+          "maxExpr": "2147483647",
+          "defaultValue": 50000
+        },
+        {
+          "name": "SEG_ACTIVE_LOW",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        },
+        {
+          "name": "DIGIT_ACTIVE_LOW",
+          "dataType": "natural",
+          "defaultExpr": "0",
+          "minExpr": "0",
+          "maxExpr": "1",
+          "defaultValue": 0
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "SEVENSEG_SCAN",
+      "inputNotes": "Share the main clock. Two blank clocks per slot prevent ghosting. Frame snapshots at wrap. en=0 blanks and restarts scan.",
+      "defaultInputs": {
+        "rst": 0,
+        "en": 1,
+        "patterns_hi": 0
+      }
+    }
+  }
+}

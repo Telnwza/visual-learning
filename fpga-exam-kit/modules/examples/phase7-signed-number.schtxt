@@ -1,0 +1,23 @@
+format schematic-text 1
+circuit signed_number_ascii
+input value[16]
+output ascii_0[64], ascii_1[64], ascii_2[64], ascii_3[64], length[5], valid, overflow
+use "CUSTOM:ss_bin_to_bcd" as conversion
+use "CUSTOM:ss_number_formatter" as formatting
+part digits @conversion generic_WIDTH=16 generic_DIGITS=5 generic_SIGNED_MODE=1
+part display @formatting generic_DIGITS=5 generic_SIGNED_DISPLAY=1 generic_FRACTION_DIGITS=2
+part errors OR
+connect value -> digits.d
+connect digits.bcd_lo -> display.digits_lo
+connect digits.bcd_hi -> display.digits_hi
+connect digits.negative -> display.negative
+connect digits.valid -> display.input_valid
+connect digits.overflow -> errors.i0
+connect display.overflow -> errors.i1
+connect display.text_0 -> ascii_0
+connect display.text_1 -> ascii_1
+connect display.text_2 -> ascii_2
+connect display.text_3 -> ascii_3
+connect display.length -> length
+connect display.valid -> valid
+connect errors.o -> overflow

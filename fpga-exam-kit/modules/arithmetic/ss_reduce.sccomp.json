@@ -1,0 +1,74 @@
+{
+  "type": "schstudio-custom-pkg",
+  "version": 1,
+  "root": "ss_reduce",
+  "customs": {
+    "ss_reduce": {
+      "moduleKind": "vhdl",
+      "name": "ss_reduce",
+      "description": "Reduction AND/OR/XOR plus parity bits to append for even/odd total parity.",
+      "fileName": "ss_reduce.vhd",
+      "vhdl": "library ieee;\nuse ieee.std_logic_1164.all;\nentity ss_reduce is\n  generic (WIDTH:positive range 1 to 64:=8);\n  port (d:in std_logic_vector(WIDTH-1 downto 0); all_one,any_one,xor_reduce,even_parity,odd_parity:out std_logic);\nend entity;\narchitecture rtl of ss_reduce is begin\n  process(d)\n    variable a,o,x:std_logic;\n  begin\n    a:='1'; o:='0'; x:='0';\n    for i in 0 to WIDTH-1 loop a:=a and d(i); o:=o or d(i); x:=x xor d(i); end loop;\n    all_one<=a; any_one<=o; xor_reduce<=x; even_parity<=x; odd_parity<=not x;\n  end process;\nend architecture;\n",
+      "ports": [
+        {
+          "name": "d",
+          "dir": "in",
+          "width": 8,
+          "dataType": "std_logic_vector",
+          "left": 7,
+          "right": 0,
+          "rangeDir": "downto",
+          "leftExpr": "WIDTH-1",
+          "rightExpr": "0"
+        },
+        {
+          "name": "all_one",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "any_one",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "xor_reduce",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "even_parity",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        },
+        {
+          "name": "odd_parity",
+          "dir": "out",
+          "width": 1,
+          "dataType": "std_logic"
+        }
+      ],
+      "generics": [
+        {
+          "name": "WIDTH",
+          "dataType": "positive",
+          "defaultExpr": "8",
+          "minExpr": "1",
+          "maxExpr": "64",
+          "defaultValue": 8
+        }
+      ],
+      "dependencies": [],
+      "uses": [],
+      "supportSources": [],
+      "libraryId": "REDUCE",
+      "displayName": "Reduction / Parity",
+      "defaultInputs": {},
+      "inputNotes": "even_parity คือ bit ที่เติมแล้วจำนวน 1 เป็นคู่ · odd_parity คือ bit ที่เติมแล้วจำนวน 1 เป็นคี่"
+    }
+  }
+}
