@@ -15,16 +15,16 @@ test('all browser storage keys belong to the separate v2 namespace',()=>{
  for(const key of next){assert.ok(key.startsWith('schstudio.v2.'),key);assert.equal(old.has(key),false,key);}
  assert.ok(current.includes('schstudio-custom-pkg')); // Portable file formats keep their original identity.
 });
-test('v2 ignores original preferences and autosave; edits and drafts cannot overwrite original data',()=>{
- const entries=new Map(),storage={getItem:key=>entries.get(key)??null,setItem:(key,value)=>entries.set(key,value)};
+test('v2 ignores original preferences and autosave; edits and drafts cannot overwrite original data',async()=>{
+ const entries=new Map(),autosaveStore=new Map(),storage={getItem:key=>entries.get(key)??null,setItem:(key,value)=>entries.set(key,value),removeItem:key=>entries.delete(key)};
  const old=loadOriginal();old.ctx.localStorage=storage;
  old.run(`state.project.name='Original workspace';autosave();`);
  entries.set('schstudio.theme','studio');entries.set('schstudio.hopStyle','arc');
- const savedOriginal=new Map(entries),a=loadApp({storage});
- assert.equal(a.run('loadAutosave()'),false);assert.equal(a.run('THEME'),'ise');
- a.run(`state.project.name='Version 2 workspace';autosave();saveVhdlSourceDraft(state.project,VHDL_NEW_DRAFT,'unfinished source');`);
+ const savedOriginal=new Map(entries),a=loadApp({storage,autosaveStore});
+ assert.equal(await a.run('loadAutosave()'),false);assert.equal(a.run('THEME'),'ise');
+ await a.run(`state.project.name='Version 2 workspace';saveVhdlSourceDraft(state.project,VHDL_NEW_DRAFT,'unfinished source');autosave();`);
  for(const [key,value] of savedOriginal)assert.equal(entries.get(key),value,key);
- const b=loadApp({storage});assert.equal(b.run('loadAutosave()'),true);
+ const b=loadApp({storage,autosaveStore});assert.equal(await b.run('loadAutosave()'),true);
  assert.equal(b.run('state.project.name'),'Version 2 workspace');
  assert.equal(b.run(`getVhdlSourceDraft(state.project,VHDL_NEW_DRAFT).source`),'unfinished source');
  assert.equal(old.run('loadAutosave()'),true);assert.equal(old.run('state.project.name'),'Original workspace');

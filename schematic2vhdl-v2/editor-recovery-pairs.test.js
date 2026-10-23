@@ -7,7 +7,7 @@ const rx=`library ieee;use ieee.std_logic_1164.all;
 entity receiver is generic(WIDTH:positive:=8);port(clk,rst:in std_logic;data:in std_logic_vector(WIDTH-1 downto 0);q:out std_logic_vector(WIDTH-1 downto 0));end;
 architecture rtl of receiver is begin q<=data;end;`;
 function storedApp(storage=new Map()){
- const a=loadApp();a.ctx.localStorage={getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v)};a.storage=storage;return a;
+ const a=loadApp({autosaveStore:storage});a.ctx.localStorage={getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v)};a.storage=storage;return a;
 }
 function modules(a=storedApp(),width=8){
  a.ctx.tx=tx;a.ctx.rx=rx;a.ctx.width=width;
@@ -64,27 +64,27 @@ test('keyboard editing ignores IME composition and supports indent, find shortcu
  ev=key('Escape');a.fields.get('#codeFindPanel').onkeydown(ev);assert.equal(a.fields.get('#codeFindPanel').hidden,true);assert.equal(ev.stopped,true);
  assert.equal(a.fields.get('#codeLines').textContent,'1\n2');
 });
-test('existing-module drafts recover after reload without changing committed source or project history',()=>{
- const a=modules();a.run(`autosave();const before=serialize(),idx=state.history.idx;saveVhdlSourceDraft(state.project,'transmitter','unfinished entity');`);
+test('existing-module drafts recover after reload without changing committed source or project history',async()=>{
+ const a=modules();await a.run(`const before=serialize(),idx=state.history.idx;saveVhdlSourceDraft(state.project,'transmitter','unfinished entity');autosave();`);
  assert.equal(a.run('serialize()'),a.run('before'));assert.equal(a.run('state.history.idx'),a.run('idx'));assert.equal(a.run('state.project.customs.transmitter.vhdl'),tx);
- const b=storedApp(a.storage);b.run('deserialize(localStorage.getItem(AUTOSAVE_KEY))');
+ const b=storedApp(a.storage);await b.run('loadAutosave()');
  assert.equal(b.run(`getVhdlSourceDraft(state.project,'transmitter').source`),'unfinished entity');assert.equal(b.run('state.project.customs.transmitter.vhdl'),tx);
  assert.doesNotMatch(b.run('serialize()'),/unfinished entity/);
 });
-test('drafts are isolated by project and original source, including a new-module draft',()=>{
- const a=modules();a.run(`saveVhdlSourceDraft(state.project,'transmitter','first draft');saveVhdlSourceDraft(state.project,VHDL_NEW_DRAFT,'new draft');autosave();`);
- const b=storedApp(a.storage);b.run(`deserialize(localStorage.getItem(AUTOSAVE_KEY));const original=state.project,other=cloneData(original);other.id='other';`);
+test('drafts are isolated by project and original source, including a new-module draft',async()=>{
+ const a=modules();await a.run(`saveVhdlSourceDraft(state.project,'transmitter','first draft');saveVhdlSourceDraft(state.project,VHDL_NEW_DRAFT,'new draft');autosave();`);
+ const b=storedApp(a.storage);await b.run('loadAutosave()');b.run(`const original=state.project,other=cloneData(original);other.id='other';`);
  assert.equal(b.run(`getVhdlSourceDraft(other,'transmitter').source`),tx);
  assert.equal(b.run(`getVhdlSourceDraft(original,VHDL_NEW_DRAFT).source`),'new draft');
  b.run(`other.id=original.id;other.customs.transmitter.vhdl+='\\n-- changed base';`);
  assert.match(b.run(`getVhdlSourceDraft(other,'transmitter').source`),/changed base/);
  assert.equal(b.run(`getVhdlSourceDraft(original,'transmitter').source`),'first draft');
 });
-test('Cancel and successful Update clear stored drafts, while storage errors retain editable text',()=>{
+test('Cancel and successful Update clear stored drafts, while storage errors retain editable text',async()=>{
  const a=modules();a.run(`saveVhdlSourceDraft(state.project,VHDL_NEW_DRAFT,'new draft');clearVhdlSourceDraft(state.project,VHDL_NEW_DRAFT);`);
  assert.equal(a.run('readVhdlDraftEntries().length'),0);
- a.run(`saveVhdlSourceDraft(state.project,'transmitter',tx+'\\n-- updated');applyVhdlModuleReplacement(planVhdlModuleReplacement('transmitter',tx+'\\n-- updated'));clearVhdlSourceDraft(state.project,'transmitter');autosave();`);
- const b=storedApp(a.storage);b.run(`deserialize(localStorage.getItem(AUTOSAVE_KEY))`);
+ await a.run(`saveVhdlSourceDraft(state.project,'transmitter',tx+'\\n-- updated');applyVhdlModuleReplacement(planVhdlModuleReplacement('transmitter',tx+'\\n-- updated'));clearVhdlSourceDraft(state.project,'transmitter');autosave();`);
+ const b=storedApp(a.storage);await b.run('loadAutosave()');
  assert.equal(b.run('readVhdlDraftEntries().length'),0);assert.equal(b.run(`getVhdlSourceDraft(state.project,'transmitter').source`),tx+'\n-- updated');
  b.ctx.localStorage.setItem=()=>{throw new Error('quota');};
  assert.match(b.run(`saveVhdlSourceDraft(state.project,'transmitter','still editable')`),/ไม่สำเร็จ/);

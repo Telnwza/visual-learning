@@ -3,7 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-function loadApp({storage}={}){
+function loadApp({storage,autosaveStore}={}){
   const stub=()=>({style:{setProperty(){}},dataset:{},classList:{add(){},remove(){},toggle(){}},
     addEventListener(){},removeEventListener(){},setAttribute(){},removeAttribute(){},remove(){},append(){},appendChild(){},
     querySelectorAll(){return [];},querySelector(){return stub();},getBoundingClientRect(){return {width:900,height:650};},
@@ -18,6 +18,10 @@ function loadApp({storage}={}){
   const html=fs.readFileSync(path.join(__dirname,'index.html'),'utf8');
   const script=/<script>([\s\S]*?)<\/script>/.exec(html)[1].replace(/\ninit\(\);\s*$/,'');
   vm.runInContext(script,ctx,{filename:path.join(__dirname,'index.html')});
+  if(autosaveStore)ctx.autosaveRecord=async(mode,data)=>{
+    if(mode==='readwrite'){autosaveStore.set('workspace',data);return;}
+    return autosaveStore.get('workspace');
+  };
   vm.runInContext(`renderAll=()=>{}; render=()=>{}; renderInspector=()=>{}; renderProjectTree=()=>{};
     autoFitSheet=()=>{}; toast=()=>{}; seedWorkspace();
     state.activeId=state.project.topId; state.openTabs=[state.activeId]; snapshot();`,ctx);

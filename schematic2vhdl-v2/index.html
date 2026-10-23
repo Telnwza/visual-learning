@@ -199,7 +199,7 @@ body.sidebar-resizing,body.sidebar-resizing *{cursor:col-resize!important;user-s
 .tree-item .ico{width:14px;flex:none;color:var(--accent)}
 .tree-item .label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tree-item .acts{display:none;gap:2px}
-.tree-item:hover .acts{display:flex}
+.tree-item:hover .acts,.tree-item:focus-within .acts{display:flex}
 .tree-item .acts button{background:transparent;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;border-radius:3px}
 .tree-item .acts button:hover{color:var(--ink);background:var(--bg-2)}
 .tree-item[data-sch-order]{cursor:grab;position:relative;touch-action:none}
@@ -218,6 +218,9 @@ body.sidebar-resizing,body.sidebar-resizing *{cursor:col-resize!important;user-s
 .ptile:active{cursor:grabbing}
 .ptile{position:relative}
 .ptile svg{display:block}
+.ptile .module-remove{position:absolute;top:2px;right:2px;width:22px;height:22px;border:0;border-radius:4px;background:var(--bg-2);color:var(--muted);cursor:pointer;opacity:0}
+.ptile:hover .module-remove,.ptile:focus-within .module-remove{opacity:1}
+.ptile .module-remove:hover{color:var(--err);background:var(--bg-3)}
 .palette-search{padding:8px;display:grid;gap:7px;font-size:11px;color:var(--ink-dim)}
 .palette-search input[type="search"]{width:100%}
 .pal-group[hidden],.ptile[hidden]{display:none}
@@ -2895,6 +2898,7 @@ function renderProjectTree(){
       <span class="star"></span>
       <span class="ico" style="color:#c084fc">▣</span>
       <span class="label">${esc(label)}</span>
+      <span class="acts"><button title="ลบโมดูล ${esc(label)}" aria-label="ลบโมดูล ${esc(label)}" data-del-custom="${esc(name)}">×</button></span>
     </div>`);
   });
   html.push(`</div>`);
@@ -3021,20 +3025,40 @@ function renderProjectTree(){
     ev.stopPropagation();
     exportCustomComponent(e.dataset.exportCustom);
   }));
-  root.querySelectorAll("[data-del-custom]").forEach(e=>e.addEventListener("click",ev=>{
-    ev.stopPropagation();
-    const name = e.dataset.delCustom;
-    const consumers=Object.values(state.project.customs).filter(cc=>cc.moduleKind==='vhdl' && parseVhdlModuleFile(cc).dependencies.some(dep=>dep.toLowerCase()===name.toLowerCase()));
-    if(consumers.length){toast(`ยังใช้โดย VHDL Module: ${consumers.map(cc=>cc.name).join(', ')}`,'warn',4500);return;}
-    if(!confirm(`ลบ component "${name}"?`)) return;
-    delete state.project.customs[name];
-    const nInst = removeInstancesOf("CUSTOM:"+name);
-    if(nInst) toast(`ลบ instance ของ "${name}" ไปด้วย ${nInst} ตัว`, "warn");
-    Object.values(state.project.schematics).forEach(s=>healJunctions(s));   // same as del-sch
-    pruneDeadPinWires();
-    snapshot(); renderAll();
-  }));
+  bindCustomDeletion(root);
   bindPalettePlacement(root);
+}
+function deleteCustomComponent(name){
+  const definition=state.project.customs[name];if(!definition)return false;
+  if(state.placementMode){toast("จบ Placement Mode ก่อนลบโมดูล","warn");return false;}
+  const entity=(definition.name||name).toLowerCase();
+  const consumers=Object.entries(state.project.customs).filter(([key,cc])=>key!==name && cc.moduleKind==='vhdl' && parseVhdlModuleFile(cc).dependencies.some(dep=>dep.toLowerCase()===entity));
+  if(consumers.length){toast(`ยังใช้โดย VHDL Module: ${consumers.map(([,cc])=>cc.name).join(', ')}`,'warn',4500);return false;}
+  const type='CUSTOM:'+name,sheets=[...new Set([...Object.values(state.project.schematics),...Object.values(state.project.customs).map(cc=>cc.schematic).filter(Boolean)])];
+  const affected=sheets.filter(s=>s.components.some(c=>c.type===type));
+  let instances=0,wires=0;
+  for(const sheet of affected){
+    const ids=new Set(sheet.components.filter(c=>c.type===type).map(c=>c.id));instances+=ids.size;
+    wires+=sheet.wires.filter(w=>ids.has(w.from.cid)||ids.has(w.to.cid)).length;
+  }
+  const label=definition.displayName||definition.name||name;
+  if(instances && !confirm(`ลบโมดูล "${label}" พร้อมกล่องที่ใช้ ${instances} ตัว และสายที่ต่อ ${wires} เส้น?`))return false;
+  if(state.componentPlacement?.draft.type===type)cancelComponentPlacement();
+  if(state.vhdlSourceEdit?.project===state.project && [state.vhdlSourceEdit.name,state.vhdlSourceEdit.root].includes(name))state.vhdlSourceEdit=null;
+  delete state.project.customs[name];removeInstancesOf(type);
+  if(instances){
+    affected.forEach(s=>healJunctions(s));
+    state.selection=new Set([...state.selection].filter(id=>!!comp(id)));
+    state.pendingWire=null;state.multiWire=null;state.pairWire=null;state.pendingParamChange=null;
+  }
+  snapshot();renderAll();autosave();toast(`ลบโมดูล "${label}" แล้ว · Ctrl+Z เพื่อย้อนกลับ`,'ok',2800);
+  return true;
+}
+function bindCustomDeletion(root){
+  root.querySelectorAll('[data-del-custom]').forEach(button=>button.addEventListener('click',ev=>{
+    ev.stopPropagation();
+    try{deleteCustomComponent(button.dataset.delCustom);}catch(error){toast(error.message,'err',4500);}
+  }));
 }
 
 /* =========================================================================
@@ -3086,6 +3110,7 @@ function renderPalette(){
           ${td.shape(p)}
         </svg>
         <span>${esc(td.label)}</span>
+        ${t.startsWith('CUSTOM:')?`<button class="module-remove" title="ลบโมดูล ${esc(td.label)}" aria-label="ลบโมดูล ${esc(td.label)}" data-del-custom="${esc(t.slice(7))}">×</button>`:''}
       </div>`);
     }
     html.push(`</div></div>`);
@@ -3109,16 +3134,17 @@ function renderPalette(){
   };
   root.querySelector('#paletteSearch').addEventListener("input",filter);
   filter();
+  bindCustomDeletion(root);
   bindPalettePlacement(root);
 }
 function bindPalettePlacement(root){
   root.querySelectorAll('[data-pal]').forEach(tile=>{
     tile.draggable=false;let drag=null,suppressClick=false;
     const pick=()=>{requestPalettePlacement(tile.dataset.pal);canvas.focus();};
-    tile.addEventListener('click',ev=>{if(suppressClick){suppressClick=false;ev.preventDefault();return;}pick();});
-    tile.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();ev.stopPropagation();pick();}});
+    tile.addEventListener('click',ev=>{if(ev.target?.closest('button'))return;if(suppressClick){suppressClick=false;ev.preventDefault();return;}pick();});
+    tile.addEventListener('keydown',ev=>{if(ev.target?.closest('button'))return;if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();ev.stopPropagation();pick();}});
     tile.addEventListener('pointerdown',ev=>{
-      if(ev.button!==0)return;
+      if(ev.button!==0||ev.target?.closest('button'))return;
       suppressClick=false;drag={id:ev.pointerId,x:ev.clientX,y:ev.clientY,moved:false};
       tile.setPointerCapture(ev.pointerId);ev.preventDefault();
     });
@@ -9878,7 +9904,7 @@ function openImportProjectDialog(){
   };
 }
 
-function serialize(){
+function serialize({autosave=false}={}){
   // strip only the VHDL-generator scratch fields (never user data, whose keys
   // could legitimately start with "_" after sanId)
   const SCRATCH = new Set(["_net","_nets","_netW","_busNet","_busW"]);
@@ -9895,10 +9921,10 @@ function serialize(){
   return JSON.stringify({
     version: 2,
     workspace: { projects: state.projects, activeId: state.activeProjectId },
-    project: state.project,
+    project: autosave ? undefined : state.project,
     activeId: state.activeId,
     openTabs: state.openTabs,
-  }, (k,v)=> SCRATCH.has(k) ? undefined : v, 2);
+  }, (k,v)=> SCRATCH.has(k) ? undefined : v, autosave ? 0 : 2);
 }
 function resetVhdlPanel(){
   invalidateCircuitResults();
@@ -10044,7 +10070,7 @@ function openProjectFromFile(){
     const f = e.target.files[0]; if(!f) return;
     const r = new FileReader();
     r.onload = ()=>{
-      try{ deserialize(r.result); toast("โหลดโปรเจกต์แล้ว","ok"); }
+      try{ deserialize(r.result); autosaveRestoreFailed=false; autosave(); toast("โหลดโปรเจกต์แล้ว","ok"); }
       catch(err){ toast("โหลดไม่สำเร็จ: "+err.message,"err"); }
     };
     r.readAsText(f);
@@ -10369,31 +10395,81 @@ function exportAllVhdl(){
 }
 
 /* =========================================================================
-   AUTO-SAVE (localStorage)
+   AUTO-SAVE (IndexedDB, with legacy localStorage restore)
    ========================================================================= */
+const AUTOSAVE_DB = "schstudio.v2.autosave";
+let autosaveDbPromise=null, autosaveWriteQueue=Promise.resolve(), autosaveRestoreFailed=false;
+function openAutosaveDb(){
+  if(!autosaveDbPromise){
+    autosaveDbPromise=new Promise((resolve,reject)=>{
+      const request=indexedDB.open(AUTOSAVE_DB,1);
+      request.onupgradeneeded=()=>request.result.createObjectStore("snapshots");
+      request.onerror=()=>reject(request.error);
+      request.onsuccess=()=>{
+        const db=request.result;
+        db.onversionchange=()=>{db.close();autosaveDbPromise=null;};
+        resolve(db);
+      };
+    }).catch(error=>{autosaveDbPromise=null;throw error;});
+  }
+  return autosaveDbPromise;
+}
+async function autosaveRecord(mode,data){
+  const db=await openAutosaveDb();
+  return new Promise((resolve,reject)=>{
+    const transaction=db.transaction("snapshots",mode), store=transaction.objectStore("snapshots");
+    const request=mode==="readwrite" ? store.put(data,"workspace") : store.get("workspace");
+    transaction.oncomplete=()=>resolve(request.result);
+    transaction.onabort=()=>reject(transaction.error || request.error || new Error("Autosave transaction aborted"));
+    transaction.onerror=()=>reject(transaction.error || request.error);
+  });
+}
+function autosaveError(error,restore=false){
+  const status=$("#statAutosave"), full=error?.name==="QuotaExceededError";
+  status.textContent=restore ? "autosave restore failed · เปิด Workspace จากไฟล์" : `autosave failed${full?" · พื้นที่เต็ม":""} · Save Workspace`;
+  status.classList.add("err");
+  status.title=error?.message || String(error);
+}
 function autosave(){
   if(state.placementMode){
-    $("#statAutosave").innerHTML = `<span>autosave: paused (Placement Mode)</span>`;
-    return;
+    const status=$("#statAutosave");status.classList.remove("err");status.title="";
+    status.innerHTML = `<span>autosave: paused (Placement Mode)</span>`;
+    return Promise.resolve(false);
   }
+  if(autosaveRestoreFailed)return Promise.resolve(false);
+  let data;
   try{
-    localStorage.setItem(AUTOSAVE_KEY, serialize());
-    $("#statAutosave").innerHTML = `<span class="ok">autosave: ✓ ${new Date().toLocaleTimeString()}</span>`;
-  }catch(e){
-    $("#statAutosave").innerHTML = `<span class="err">autosave failed</span>`;
-  }
-}
-function loadAutosave(){
-  const s = localStorage.getItem(AUTOSAVE_KEY);
-  if(s){
+    data=serialize({autosave:true});
+  }catch(error){autosaveError(error);return Promise.resolve(false);}
+  const save=async()=>{
     try{
-      deserialize(s);   // also syncs #projectName, uid counter, VHDL panel
+      await autosaveRecord("readwrite",data);
+      // The old v2 snapshot is retired only after the IndexedDB transaction commits.
+      try{localStorage.removeItem(AUTOSAVE_KEY);}catch(_){}
+      const status=$("#statAutosave");status.classList.remove("err");status.title="";
+      status.innerHTML=`<span class="ok">autosave: ✓ ${new Date().toLocaleTimeString()}</span>`;
       return true;
-    }catch(e){
-      console.warn("Autosave restore failed:", e);
-    }
+    }catch(error){autosaveError(error);return false;}
+  };
+  autosaveWriteQueue=autosaveWriteQueue.then(save,save);
+  return autosaveWriteQueue;
+}
+async function loadAutosave(){
+  let data, readError;
+  try{data=await autosaveRecord("readonly");}catch(error){readError=error;}
+  if(data==null){
+    try{data=localStorage.getItem(AUTOSAVE_KEY);}catch(error){readError ||= error;}
   }
-  return false;
+  let restored=false;
+  if(data!=null){
+    try{
+      deserialize(data);
+      restored=true;
+    }catch(error){readError ||= error;}
+  }
+  autosaveRestoreFailed=!!readError;
+  if(readError)autosaveError(readError,true);
+  return restored;
 }
 function startAutoSave(){
   clearInterval(state.autosaveTimer);
@@ -12010,10 +12086,10 @@ function renderAll(){
   renderInspector();
 }
 
-function init(){
+async function init(){
   seedWorkspace();
   let restored = false;
-  try{ restored = loadAutosave(); }catch(e){}
+  try{ restored = await loadAutosave(); }catch(e){autosaveRestoreFailed=true;autosaveError(e,true);}
   if(!restored){
     state.activeId = Object.keys(state.project.schematics)[0];
     state.openTabs = [state.activeId];

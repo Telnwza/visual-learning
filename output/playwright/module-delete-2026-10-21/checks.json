@@ -1,0 +1,26 @@
+{
+  "origin": "http://127.0.0.1:8817",
+  "sample": "new_module starter created through New VHDL Module",
+  "unusedPaletteDeletion": {
+    "removed": true,
+    "confirmation": false,
+    "canvasUnchanged": "8 components · 8 wires · top: top",
+    "undoRestored": true
+  },
+  "unusedProjectDeletion": {
+    "keyboard": "Enter",
+    "removed": true,
+    "confirmation": false,
+    "undoRestored": true
+  },
+  "placedModuleCancellation": {
+    "confirmedDialogText": "ลบโมดูล \"new_module\" พร้อมกล่องที่ใช้ 1 ตัว และสายที่ต่อ 0 เส้น?",
+    "cancelled": true,
+    "canvasStatus": "9 components · 8 wires · top: top",
+    "moduleCount": 1
+  },
+  "automatedChecks": {
+    "passed": 70,
+    "failed": 0
+  }
+}

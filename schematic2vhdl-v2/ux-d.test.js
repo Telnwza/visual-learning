@@ -236,10 +236,10 @@ test('new module names avoid existing entities, schematic names and supporting p
  b.run('applyVhdlModuleImport(planVhdlModuleImport([{vhdl:pkg},{vhdl:box}]))');
  assert.match(newModuleEditor(b).fields.get('#vmSource').value,/entity new_module_2 is/);
 });
-test('New VHDL preserves recovered drafts instead of replacing them with the starter',()=>{
- const entries=new Map(),storage={getItem:k=>entries.get(k)??null,setItem:(k,v)=>entries.set(k,v)};
- const a=loadApp({storage});a.run(`saveVhdlSourceDraft(state.project,VHDL_NEW_DRAFT,'unfinished user source');autosave();`);
- const b=loadApp({storage});b.run('loadAutosave()');const editor=newModuleEditor(b);
+test('New VHDL preserves recovered drafts instead of replacing them with the starter',async()=>{
+ const entries=new Map(),autosaveStore=new Map(),storage={getItem:k=>entries.get(k)??null,setItem:(k,v)=>entries.set(k,v)};
+ const a=loadApp({storage,autosaveStore});await a.run(`saveVhdlSourceDraft(state.project,VHDL_NEW_DRAFT,'unfinished user source');autosave();`);
+ const b=loadApp({storage,autosaveStore});await b.run('loadAutosave()');const editor=newModuleEditor(b);
  assert.equal(editor.fields.get('#vmSource').value,'unfinished user source');assert.equal(editor.fields.get('#vmApply').disabled,true);
  editor.fields.get('#vmCancel').onclick();assert.equal(b.run('readVhdlDraftEntries().length'),0);
  assert.match(newModuleEditor(b).fields.get('#vmSource').value,/entity new_module is/);

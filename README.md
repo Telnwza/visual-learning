@@ -117,7 +117,7 @@ This keeps the site compatible with GitHub Pages project URLs and direct browser
 
 - [Original](schematic2vhdl/index.html): the application is preserved byte-for-byte from GitHub `main` commit `a101f195790a4a833e98c271d1fda3a50b0807d3`.
 - [Version 2](schematic2vhdl-v2/index.html): all current enhancements and their tests live here. New work should target this directory.
-- The two versions use separate browser storage keys. Version 2 does not overwrite the original autosave or preferences. Use Save Workspace and Open to transfer a project into v2; drafts are local browser data, not part of exported project files.
+- The two versions use separate browser storage. Version 2 saves its workspace in IndexedDB and reads earlier v2 localStorage autosaves automatically; the original autosave and preferences remain separate. Use Save Workspace and Open to transfer a project into v2; drafts are local browser data, not part of exported project files.
 - External VHDL modules remain together in [fpga-exam-kit/modules](fpga-exam-kit/modules/README.md).
 
 Run each version's tests independently:
