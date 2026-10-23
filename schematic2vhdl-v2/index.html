@@ -94,6 +94,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 @media (max-width:1000px){.workspace{--left-sidebar:190px;--right-sidebar:290px}}
 .pane{background:var(--bg-1);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
 .pane.right{border-right:none;border-left:1px solid var(--line)}
+.pane:not(.right){container-type:inline-size;container-name:project-sidebar}
 .pane-tabs{display:flex;background:var(--bg-2);border-bottom:1px solid var(--line)}
 .pane-tabs button{flex:1;background:transparent;border:none;color:var(--ink-dim);padding:9px;cursor:pointer;font-weight:500;border-bottom:2px solid transparent}
 .pane-tabs button.active{color:var(--ink);border-bottom-color:var(--accent);background:var(--bg-1)}
@@ -113,6 +114,16 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .canvas-host{flex:1;position:relative;overflow:hidden;background:
   radial-gradient(circle at 1px 1px,var(--grid-dot) 1px,transparent 0) 0 0/22px 22px,
   linear-gradient(180deg,var(--sheet-a),var(--sheet-b))}
+.canvas-host[hidden],.vhdl-document[hidden]{display:none}
+.vhdl-document{flex:1;min-height:0;overflow:auto;background:var(--bg-1)}
+.vhdl-document .inspector-source{min-height:100%;height:auto;padding:14px}
+.vhdl-document .vhdl-code-editor{min-height:360px;flex:1}
+.vhdl-document .vhdl-source-editor{min-height:360px;resize:vertical}
+.workspace.source-wide{grid-template-columns:var(--left-sidebar) minmax(0,1fr) 0}
+.workspace.source-wide .pane.right,.workspace.source-wide .sidebar-resizer.right{visibility:hidden;pointer-events:none}
+.source-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sch-tab.vhdl::before{content:"</>";color:var(--wire-bus);font-family:monospace}
+.sch-tab .dirty{color:var(--warn)}
 #canvas{width:100%;height:100%;display:block;touch-action:none;cursor:default}
 .overlay{position:absolute;pointer-events:none;inset:0}
 .overlay > *{pointer-events:auto}
@@ -177,7 +188,7 @@ body.sidebar-resizing,body.sidebar-resizing *{cursor:col-resize!important;user-s
 .tree{padding:6px}
 .tree-group{margin-bottom:10px}
 .tree-group h4{margin:0;padding:7px 6px 4px;font-size:10.5px;letter-spacing:1.3px;color:var(--muted);text-transform:uppercase;display:flex;align-items:center;gap:6px}
-.tree-group h4 .add{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:1px solid var(--line);color:var(--ink-dim);width:20px;height:20px;padding:0;box-sizing:border-box;border-radius:4px;cursor:pointer;line-height:1;font-size:16px}
+.tree-group h4 .add{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;flex:none;background:transparent;border:1px solid var(--line);color:var(--ink-dim);width:28px;height:28px;padding:0;box-sizing:border-box;border-radius:5px;cursor:pointer;line-height:1;font-size:16px}
 .tree-group h4 .add:hover{background:var(--accent);color:white;border-color:var(--accent)}
 .tree-group h4 .add ~ .add{margin-left:4px}
 .tree-item.prj .label{font-weight:600}
@@ -207,6 +218,26 @@ body.sidebar-resizing,body.sidebar-resizing *{cursor:col-resize!important;user-s
 .tree-item.sch-dragging{opacity:.42}
 .tree-item.sch-drop-before{box-shadow:inset 0 2px 0 var(--accent)}
 .tree-item.sch-drop-after{box-shadow:inset 0 -2px 0 var(--accent)}
+.tree-children{margin-left:14px;border-left:1px solid var(--line);padding-left:3px}
+.project-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:4px 4px 8px}
+.project-actions button{display:flex;align-items:center;justify-content:center;gap:4px;min-width:0;min-height:30px;box-sizing:border-box;padding:5px 6px;background:transparent;color:var(--ink-dim);border:1px solid var(--line);border-radius:5px;font:inherit;font-size:11px;cursor:pointer;white-space:nowrap}
+.project-actions button svg{width:14px;height:14px;flex:none}
+.project-actions button.main-action{background:var(--bg-2);color:var(--ink);border-color:var(--line-2)}
+.project-actions button:hover{background:var(--bg-3);border-color:var(--accent);color:var(--ink)}
+.project-actions button.organize-action{grid-column:1/-1;justify-content:flex-start;min-height:26px;border-color:transparent;padding-left:2px}
+.project-actions button.organize-action:hover{border-color:var(--line)}
+@container project-sidebar (max-width:209px){.project-actions{grid-template-columns:minmax(0,1fr)}}
+.tree-folder .label{font-weight:500}
+.tree-file{touch-action:none;position:relative;user-select:none}
+.tree-item input.folder-name{width:100%;min-width:0;box-sizing:border-box;background:var(--bg-2);color:var(--ink);border:1px solid var(--accent);border-radius:3px;padding:3px 5px;font:inherit}
+.tree-item button.tw{background:none;border:none;padding:2px 0;font:inherit}
+.tree-item.vhdl .ico{color:var(--wire-bus);font-size:10px;font-family:monospace}
+.tree-item .tree-open{display:flex;align-items:center;gap:7px;flex:1;min-width:0;background:none;border:0;padding:0;color:inherit;font:inherit;text-align:left;cursor:inherit}
+.tree-folder.drop-target,.tree-item.prj.drop-target{outline:1px solid var(--accent);background:var(--bg-3)}
+.tree-item.top .ico{color:var(--warn)}
+.explorer-menu{position:fixed;z-index:300;width:220px;box-sizing:border-box;padding:8px;display:grid;gap:10px;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;box-shadow:var(--sh-2);font-size:12px}
+.explorer-menu label{display:grid;gap:5px;color:var(--ink-dim)}
+.explorer-menu select{width:100%;background:var(--bg-1);color:var(--ink);border:1px solid var(--line);padding:4px}
 
 /* ---------- Palette ---------- */
 .palette{padding:6px}
@@ -530,6 +561,7 @@ body.sidebar-resizing,body.sidebar-resizing *{cursor:col-resize!important;user-s
           </div>
         </div>
       </div>
+      <div class="vhdl-document" id="vhdlDocument" hidden></div>
     </main>
 
     <!-- Right pane -->
@@ -2562,6 +2594,9 @@ const state = {
   componentPlacement:null,
   pendingParamChange:null,
   vhdlSourceEdit:null,
+  activeVhdl:null,
+  vhdlTabs:[],
+  explorerNameEdit:null,
   pairWire:null,
 };
 const vhdlSourceDrafts=new WeakMap();
@@ -2768,9 +2803,9 @@ function cyclePlacementAir(){
 /* =========================================================================
    HISTORY (undo/redo)
    ========================================================================= */
-function snapshot(){
+function snapshot({circuit=true}={}){
   if(state.history.muted) return;
-  invalidateCircuitResults();
+  if(circuit)invalidateCircuitResults();
   stashProjectUi();
   const s = JSON.stringify({projects:state.projects, a:state.activeId, t:state.openTabs, pid:state.activeProjectId},
     (k,v)=>["_net","_nets","_netW","_busNet","_busW"].includes(k) ? undefined : v);
@@ -2788,6 +2823,7 @@ function restore(s){
   state.project = state.projects[state.activeProjectId];
   state.activeId = o.a;
   state.openTabs = o.t;
+  restoreVhdlTabs();
   state.selection.clear();
   state.pendingWire = null;
   state.clipboard = null;
@@ -2801,6 +2837,153 @@ function redo(){ if(state.history.idx<state.history.stack.length-1){ state.histo
 /* =========================================================================
    PROJECT TREE (left pane "Project")
    ========================================================================= */
+function explorerItems(project=state.project){
+  const items=[
+    ...Object.values(project.schematics).map(s=>({key:'SCH:'+s.id,name:s.name,kind:'sch',id:s.id})),
+    ...Object.entries(project.customs||{}).filter(([,cc])=>!cc.importDependency).map(([name,cc])=>({key:'CUSTOM:'+name,name:cc.displayName||cc.name||name,kind:'custom',id:name,vhdl:cc.moduleKind==='vhdl'}))
+  ];
+  const order=project.explorer?.order;
+  if(Array.isArray(order))items.sort((a,b)=>{const ai=order.indexOf(a.key),bi=order.indexOf(b.key);return (ai<0?order.length:ai)-(bi<0?order.length:bi);});
+  return items;
+}
+function projectExplorer(project=state.project){
+  const saved=project.explorer;
+  const folders=Array.isArray(saved?.folders)?saved.folders.filter(f=>f&&typeof f.id==='string'&&typeof f.name==='string'):[{id:'schematics',name:'Schematics'},{id:'vhdl',name:'VHDL'}];
+  const folderIds=new Set(folders.map(f=>f.id)),items=Object.create(null);
+  for(const item of explorerItems(project)){
+    const assigned=saved?.items?.[item.key];
+    const fallback=item.kind==='sch'?'schematics':'vhdl';
+    items[item.key]=assigned===null?null:folderIds.has(assigned)?assigned:folderIds.has(fallback)?fallback:null;
+  }
+  return {folders:folders.map(f=>({...f})),items,order:explorerItems(project).map(i=>i.key),collapsed:!!saved?.collapsed};
+}
+function updateProjectExplorer(project,change,history=true){
+  const explorer=projectExplorer(project);change(explorer);project.explorer=explorer;
+  if(history)snapshot({circuit:false});renderProjectTree();autosave();
+}
+function moveExplorerItem(key,folderId){
+  const explorer=projectExplorer();
+  if(!Object.hasOwn(explorer.items,key)||folderId!==null&&!explorer.folders.some(f=>f.id===folderId)||explorer.items[key]===folderId)return false;
+  updateProjectExplorer(state.project,e=>{e.items[key]=folderId;});return true;
+}
+function addExplorerFolder(name){
+  name=String(name||'').trim();if(!name)return null;
+  const taken=new Set(projectExplorer().folders.map(f=>f.id));let id;do{id=uid('folder');}while(taken.has(id));
+  updateProjectExplorer(state.project,e=>{e.folders.push({id,name});e.collapsed=false;});return id;
+}
+function reorderExplorerItem(key,target,after){
+  const explorer=projectExplorer();
+  if(key===target||!Object.hasOwn(explorer.items,key)||!Object.hasOwn(explorer.items,target)||explorer.items[key]!==explorer.items[target])return false;
+  const order=explorer.order.filter(k=>k!==key),index=order.indexOf(target)+(after?1:0);order.splice(index,0,key);
+  if(order.every((k,i)=>k===explorer.order[i]))return false;
+  updateProjectExplorer(state.project,e=>{e.order=order;});return true;
+}
+function editExplorerFolder(id=null){
+  const folder=projectExplorer().folders.find(f=>f.id===id);
+  state.explorerNameEdit={project:state.project,id,name:folder?.name||'New folder'};
+  renderProjectTree();const input=$('#explorerFolderName');input.focus();input.select();
+}
+function deleteExplorerFolder(id){
+  if(!projectExplorer().folders.some(f=>f.id===id))return false;
+  updateProjectExplorer(state.project,e=>{e.folders=e.folders.filter(f=>f.id!==id);for(const key of Object.keys(e.items))if(e.items[key]===id)e.items[key]=null;});return true;
+}
+function placeExplorerItem(key){
+  if(state.activeVhdl){openSchTab(state.activeId);}
+  return requestPalettePlacement(key);
+}
+function showExplorerMenu(row,ev){
+  ev.preventDefault();document.querySelector('#explorerMenu')?._close?.();
+  const key=row.dataset.explorerItem,explorer=projectExplorer(),menu=document.createElement('div');
+  menu.id='explorerMenu';menu.className='explorer-menu';
+  menu.style.left=Math.max(0,Math.min(ev.clientX,window.innerWidth-230))+'px';
+  menu.style.top=Math.max(0,Math.min(ev.clientY,window.innerHeight-130))+'px';
+  menu.innerHTML=`<button class="btn" data-place>วางในวงจร</button><label>ย้ายไปโฟลเดอร์<select aria-label="ย้ายไปโฟลเดอร์"><option value="">Project</option>${explorer.folders.map(f=>`<option value="${esc(f.id)}">${esc(f.name)}</option>`).join('')}</select></label>`;
+  document.body.appendChild(menu);const select=menu.querySelector('select');select.value=explorer.items[key]||'';
+  const close=()=>{menu.remove();document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',escape);};
+  menu._close=close;
+  const outside=e=>{if(!menu.contains(e.target))close();},escape=e=>{if(e.key==='Escape'){e.stopPropagation();close();row.querySelector('.tree-open')?.focus();}};
+  menu.querySelector('[data-place]').onclick=()=>{close();placeExplorerItem(key);};
+  select.onchange=()=>{close();moveExplorerItem(key,select.value||null);};
+  document.addEventListener('pointerdown',outside);document.addEventListener('keydown',escape);menu.querySelector('button').focus();
+}
+function bindProjectExplorer(root){
+  root.onkeydown=ev=>{if((ev.key===' '||ev.key==='Enter')&&ev.target.closest('button'))ev.stopPropagation();};
+  root.querySelectorAll('[data-project-fold]').forEach(b=>b.onclick=ev=>{
+    ev.stopPropagation();const p=state.projects[b.dataset.projectFold],active=p===state.project;
+    if(!active)switchProject(p.id);
+    if(p===state.project)updateProjectExplorer(p,e=>{e.collapsed=active?!e.collapsed:false;},false);
+  });
+  root.querySelector('[data-new-folder]')?.addEventListener('click',()=>editExplorerFolder());
+  root.querySelectorAll('[data-folder-fold]').forEach(b=>b.onclick=()=>updateProjectExplorer(state.project,e=>{const f=e.folders.find(f=>f.id===b.dataset.folderFold);f.collapsed=!f.collapsed;},false));
+  root.querySelectorAll('[data-folder-rename]').forEach(b=>b.onclick=()=>editExplorerFolder(b.dataset.folderRename));
+  root.querySelectorAll('[data-folder-delete]').forEach(b=>b.onclick=()=>deleteExplorerFolder(b.dataset.folderDelete));
+  const input=root.querySelector('#explorerFolderName'),edit=state.explorerNameEdit;
+  if(input&&edit){
+    const finish=cancel=>{
+      if(state.explorerNameEdit!==edit)return;
+      state.explorerNameEdit=null;const name=input.value.trim();
+      if(cancel||!name||edit.project!==state.project){renderProjectTree();return;}
+      if(edit.id)updateProjectExplorer(state.project,e=>{const folder=e.folders.find(f=>f.id===edit.id);if(folder)folder.name=name;});
+      else addExplorerFolder(name);
+    };
+    input.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key==='Escape'){ev.preventDefault();ev.stopPropagation();finish(ev.key==='Escape');}});
+    input.addEventListener('blur',()=>finish(false));
+  }
+  root.querySelectorAll('[data-explorer-item]').forEach(row=>{
+    let drag=null,suppressClick=false;
+    const key=row.dataset.explorerItem;
+    row.addEventListener('click',ev=>{
+      if(ev.target.closest('.acts'))return;
+      if(suppressClick){suppressClick=false;ev.preventDefault();return;}
+      if(key.startsWith('SCH:'))openSchTab(key.slice(4));
+      else if(state.project.customs[key.slice(7)]?.moduleKind==='vhdl')openVhdlTab(key.slice(7));
+      else openWizard(key.slice(7));
+    });
+    row.addEventListener('contextmenu',ev=>showExplorerMenu(row,ev));
+    row.addEventListener('keydown',ev=>{
+      if(ev.key==='Escape'&&drag){if(drag.placing)cancelComponentPlacement();drag=null;suppressClick=true;clear();row.classList.remove('sch-dragging');}
+      if(ev.key==='ContextMenu'||ev.shiftKey&&ev.key==='F10'){const r=row.getBoundingClientRect();showExplorerMenu(row,{preventDefault:()=>ev.preventDefault(),clientX:r.left,clientY:r.bottom});}
+    });
+    const clear=()=>root.querySelectorAll('.sch-drop-before,.sch-drop-after,.drop-target').forEach(r=>r.classList.remove('sch-drop-before','sch-drop-after','drop-target'));
+    row.addEventListener('pointerdown',ev=>{
+      if(ev.button!==0||ev.target.closest('.acts')||state.placementMode)return;
+      suppressClick=false;drag={id:ev.pointerId,x:ev.clientX,y:ev.clientY,moved:false,target:null,placing:false,failed:false};row.setPointerCapture(ev.pointerId);
+    });
+    row.addEventListener('pointermove',ev=>{
+      if(!drag||drag.id!==ev.pointerId)return;
+      if(!drag.moved&&Math.hypot(ev.clientX-drag.x,ev.clientY-drag.y)<5)return;
+      drag.moved=true;suppressClick=true;ev.preventDefault();clear();row.classList.add('sch-dragging');
+      const r=canvas.getBoundingClientRect(),inside=!state.activeVhdl&&ev.clientX>=r.left&&ev.clientX<=r.right&&ev.clientY>=r.top&&ev.clientY<=r.bottom;
+      drag.target=null;
+      if(inside){
+        if(!drag.placing&&!drag.failed){drag.placing=!!requestPalettePlacement(key);drag.failed=!drag.placing;}
+        if(drag.placing){moveComponentPlacement(svgPoint(ev));render();}return;
+      }
+      if(drag.placing){cancelComponentPlacement();drag.placing=false;}drag.failed=false;
+      const target=document.elementFromPoint(ev.clientX,ev.clientY)?.closest('[data-folder],[data-explorer-item],[data-project]');
+      if(!target||!root.contains(target)||target===row||target.dataset.project&&target.dataset.project!==state.activeProjectId)return;
+      drag.target=target;
+      const before=ev.clientY<target.getBoundingClientRect().top+target.getBoundingClientRect().height/2;
+      drag.after=!before;target.classList.add(target.dataset.explorerItem?(before?'sch-drop-before':'sch-drop-after'):'drop-target');
+    });
+    row.addEventListener('pointerup',ev=>{
+      if(!drag||drag.id!==ev.pointerId)return;
+      const d=drag;drag=null;row.releasePointerCapture(ev.pointerId);clear();row.classList.remove('sch-dragging');if(!d.moved)return;
+      ev.preventDefault();ev.stopPropagation();
+      if(d.placing){
+        const r=canvas.getBoundingClientRect();
+        if(ev.clientX<r.left||ev.clientX>r.right||ev.clientY<r.top||ev.clientY>r.bottom){cancelComponentPlacement();return;}
+        try{commitComponentPlacement(svgPoint(ev));canvas.focus();}catch(error){toast(error.message,'err');cancelComponentPlacement();}return;
+      }
+      if(!d.target)return;
+      const explorer=projectExplorer(),targetKey=d.target.dataset.explorerItem,folder=d.target.dataset.folder|| (targetKey?explorer.items[targetKey]:null);
+      if(explorer.items[key]!==folder)moveExplorerItem(key,folder);
+      else if(targetKey)reorderExplorerItem(key,targetKey,d.after);
+    });
+    row.addEventListener('pointercancel',()=>{if(drag?.placing)cancelComponentPlacement();drag=null;suppressClick=true;clear();row.classList.remove('sch-dragging');});
+  });
+}
+
 function reorderSchematics(movingId, targetId, placeAfter){
   const oldOrder = Object.keys(state.project.schematics);
   if(movingId===targetId || !oldOrder.includes(movingId) || !oldOrder.includes(targetId)) return false;
@@ -2825,88 +3008,58 @@ function renderProjectTree(){
   const root = $("#projectPane");
   const p = state.project;
   const html = [];
+  if(state.explorerNameEdit?.project!==p)state.explorerNameEdit=null;
+  const edit=state.explorerNameEdit;
+  const folderIcon='<svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 7V5h6l2 2h10v13H3V7Z"/></svg>';
+  const plusIcon='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+  const splitIcon='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 20v-7M12 13 5 6M12 13l7-7M3 10V4h6M15 4h6v6"/></svg>';
+  const folderInput=()=>`<div class="tree-item">${folderIcon}<input class="folder-name" id="explorerFolderName" aria-label="ชื่อโฟลเดอร์" value="${esc(edit.name)}"></div>`;
   html.push(`<div class="tree">`);
 
-  html.push(`<div class="tree-group"><h4>PROJECTS
-    <button class="add" title="Import Project" data-act="import-project">↓</button>
-    <button class="add" title="New Project" data-act="new-project">+</button></h4>`);
+  html.push(`<div class="tree-group"><h4>PROJECT
+    <button class="add" title="Import Project" aria-label="Import Project" data-act="import-project">↓</button>
+    <button class="add" title="New Project" aria-label="New Project" data-act="new-project">+</button></h4>`);
   Object.values(state.projects).forEach(pr=>{
+    const explorer=projectExplorer(pr),active=pr.id===state.activeProjectId;
     html.push(`<div class="tree-item prj ${pr.id===state.activeProjectId?"active":""}" data-project="${esc(pr.id)}">
-      <span class="ico">▣</span><span class="label">${esc(pr.name)}</span><span class="cnt">${Object.keys(pr.schematics).length}</span>
+      <button class="tw" data-project-fold="${esc(pr.id)}" aria-label="${!active||explorer.collapsed?'ขยาย':'พับ'} ${esc(pr.name)}" aria-expanded="${active&&!explorer.collapsed}">${!active||explorer.collapsed?'▸':'▾'}</button>
+      ${folderIcon}<span class="label">${esc(pr.name)}</span><span class="cnt">${explorerItems(pr).length}</span>
       <span class="acts"><button title="เปลี่ยนชื่อโปรเจกต์" data-project-rename="${esc(pr.id)}">✎</button>
       <button title="ลบโปรเจกต์" data-project-delete="${esc(pr.id)}">×</button></span></div>`);
-  });
-  html.push(`</div>`);
-  // Schematics
-  html.push(`<div class="tree-group"><h4>SCHEMATICS
-    <button class="add" title="แยก schematics" data-act="split-project">✂</button>
-    <button class="add" title="New schematic" data-act="new-sch">+</button></h4>`);
-  for(const id in p.schematics){
-    const sch = p.schematics[id];
-    const isTop = id===p.topId;
-    const isActive = id===state.activeId;
-    html.push(`<div class="tree-item ${isActive?"active":""} ${isTop?"top":""}"
-      data-open="${id}" data-sch-order="${id}" title="ลากขึ้นหรือลงเพื่อจัดลำดับ · คลิกเพื่อเปิด">
-      <span class="star">★</span>
-      <span class="ico">◆</span>
-      <span class="label">${esc(sch.name)}</span>
-      <span class="acts">
-        <button title="Set as top" data-settop="${id}">★</button>
-        <button title="Rename" data-rename-sch="${id}">✎</button>
-        <button title="Delete" data-del-sch="${id}">✕</button>
-      </span>
-    </div>`);
-  }
-  html.push(`</div>`);
-
-  html.push(`<div class="tree-group"><h4>VHDL MODULES <button class="add" data-act="paste-vhdl-module" title="New VHDL Module" aria-label="New VHDL Module">+</button></h4>
-    <div style="display:grid;gap:6px;padding:6px 10px">
-      <button class="btn" title="Import VHDL Module" data-act="import-vhdl-module">↓ Import Module…</button>
-    </div>`);
-  html.push(`</div>`);
-
-  // Reusable schematics and custom modules share the same placement controls.
-  html.push(`<div class="tree-group"><h4>USE AS SUB-BLOCK</h4>`);
-  const others = Object.keys(p.schematics).filter(id=>id!==state.activeId);
-  const modules = Object.entries(p.customs||{}).filter(([,cc])=>!cc.importDependency);
-  if(others.length===0 && modules.length===0){
-    html.push(`<div style="padding:6px 10px;color:var(--muted);font-size:11px">— ยังไม่มี sub-block —</div>`);
-  } else {
-    others.forEach(id=>{
-      const sch = p.schematics[id];
-      const why = subBlockBlockedWhy(id, state.activeId);
-      if(why){
-        // still listed, but plainly out of reach and saying why — a silently missing
-        // sheet just reads as a bug to whoever went looking for it
-        html.push(`<div class="tree-item" style="opacity:.42;cursor:not-allowed" title="${esc(why)}">
-          <span class="star"></span>
-          <span class="ico">🔒</span>
-          <span class="label">${esc(sch.name)}</span>
-        </div>`);
-      } else {
-        html.push(`<div class="tree-item" draggable="true" tabindex="0" role="button" aria-label="วาง ${esc(sch.name)}" data-pal="SCH:${id}">
-          <span class="star"></span>
-          <span class="ico" style="color:#5dd5ff">▣</span>
-          <span class="label">${esc(sch.name)}</span>
-        </div>`);
-      }
-    });
-  }
-  modules.forEach(([name,cc])=>{
-    const label=cc.displayName||cc.name||name;
-    html.push(`<div class="tree-item" draggable="true" tabindex="0" role="button" aria-label="วาง ${esc(label)}" data-pal="${esc('CUSTOM:'+name)}">
-      <span class="star"></span>
-      <span class="ico" style="color:#c084fc">▣</span>
-      <span class="label">${esc(label)}</span>
-      <span class="acts"><button title="ลบโมดูล ${esc(label)}" aria-label="ลบโมดูล ${esc(label)}" data-del-custom="${esc(name)}">×</button></span>
-    </div>`);
+    if(explorer.collapsed||!active)return;
+    html.push(`<div class="tree-children"><div class="project-actions" role="group" aria-label="คำสั่งโปรเจกต์">
+      <button class="main-action" title="สร้าง schematic" aria-label="New schematic" data-act="new-sch">${plusIcon}<span>Schematic</span></button>
+      <button class="main-action" title="นำเข้าโมดูล VHDL จากไฟล์" aria-label="Import VHDL Module" data-act="import-vhdl-module">Import VHDL</button>
+      <button title="เขียนโมดูล VHDL ใหม่" aria-label="New VHDL Module" data-act="paste-vhdl-module">${plusIcon}<span>VHDL</span></button>
+      <button title="สร้างโฟลเดอร์" aria-label="New folder" data-new-folder>${folderIcon}<span>New folder</span></button>
+      <button class="organize-action" title="แยก schematics ไปอีกโปรเจกต์" data-act="split-project">${splitIcon}<span>แยกโปรเจกต์</span></button></div>`);
+    const items=explorerItems(pr);
+    const row=item=>{
+      const sch=item.kind==='sch',isTop=sch&&item.id===pr.topId,isActive=sch?!state.activeVhdl&&item.id===state.activeId:item.id===state.activeVhdl;
+      return `<div class="tree-item tree-file ${isActive?'active':''} ${isTop?'top':''} ${item.vhdl?'vhdl':''}" data-explorer-item="${esc(item.key)}" ${sch?`data-sch-order="${esc(item.id)}"`:''}>
+        <button class="tree-open" data-document="${esc(item.key)}" aria-label="เปิด ${esc(item.name)}" title="${esc(item.name)}"><span class="ico">${isTop?'★':item.vhdl?'&lt;/&gt;':'◆'}</span><span class="label">${esc(item.name)}</span></button>
+        <span class="acts">${sch?`<button title="Set as top" data-settop="${esc(item.id)}">★</button><button title="Rename" data-rename-sch="${esc(item.id)}">✎</button><button title="Delete" data-del-sch="${esc(item.id)}">×</button>`:`<button title="ลบโมดูล ${esc(item.name)}" aria-label="ลบโมดูล ${esc(item.name)}" data-del-custom="${esc(item.id)}">×</button>`}</span></div>`;
+    };
+    html.push(items.filter(i=>explorer.items[i.key]===null).map(row).join(''));
+    for(const folder of explorer.folders){
+      const children=items.filter(i=>explorer.items[i.key]===folder.id);
+      if(edit?.id===folder.id){html.push(folderInput());if(!folder.collapsed)html.push(`<div class="tree-children">${children.map(row).join('')}</div>`);continue;}
+      html.push(`<div class="tree-item tree-folder" data-folder="${esc(folder.id)}"><button class="tree-open" data-folder-fold="${esc(folder.id)}" aria-expanded="${!folder.collapsed}" aria-label="${folder.collapsed?'ขยาย':'พับ'} ${esc(folder.name)}"><span class="tw">${folder.collapsed?'▸':'▾'}</span>${folderIcon}<span class="label">${esc(folder.name)}</span></button><span class="cnt">${children.length}</span><span class="acts"><button title="Rename folder" data-folder-rename="${esc(folder.id)}">✎</button><button title="ลบโฟลเดอร์ เก็บไฟล์ไว้" data-folder-delete="${esc(folder.id)}">×</button></span></div>`);
+      if(!folder.collapsed)html.push(`<div class="tree-children">${children.map(row).join('')}</div>`);
+    }
+    if(edit&&edit.id===null)html.push(folderInput());
+    html.push('</div>');
   });
   html.push(`</div>`);
   html.push(`</div>`);
 
   root.innerHTML = html.join("");
   root.querySelectorAll("[data-project]").forEach(e=>e.addEventListener("click",ev=>{
-    if(!ev.target.closest(".acts")) switchProject(e.dataset.project);
+    if(!ev.target.closest(".acts, [data-project-fold]")){
+      const pr=state.projects[e.dataset.project];
+      if(pr.explorer?.collapsed)updateProjectExplorer(pr,e=>{e.collapsed=false;},false);
+      switchProject(e.dataset.project);
+    }
   }));
   root.querySelectorAll("[data-project-rename]").forEach(e=>e.addEventListener("click",()=>{
     const id=e.dataset.projectRename, name=prompt("ชื่อโปรเจกต์:",state.projects[id].name);
@@ -2914,68 +3067,7 @@ function renderProjectTree(){
   }));
   root.querySelectorAll("[data-project-delete]").forEach(e=>e.addEventListener("click",()=>deleteProjectById(e.dataset.projectDelete)));
 
-  // wire up
-  const orderRows = Array.from(root.querySelectorAll("[data-sch-order]"));
-  const clearOrderMarkers = ()=>orderRows.forEach(row=>{
-    row.classList.remove("sch-dragging", "sch-drop-before", "sch-drop-after");
-    row.removeAttribute("aria-grabbed");
-  });
-  let orderDrag = null;
-  let suppressOrderClick = false;
-  orderRows.forEach(row=>{
-    row.addEventListener("pointerdown",ev=>{
-      if(ev.button!==0 || ev.target.closest(".acts")) return;
-      orderDrag = {
-        id:row.dataset.schOrder, row, pointerId:ev.pointerId,
-        x0:ev.clientX, y0:ev.clientY, moved:false, targetId:null, placeAfter:false
-      };
-      try{ row.setPointerCapture(ev.pointerId); }catch(_){}
-    });
-    row.addEventListener("pointermove",ev=>{
-      if(!orderDrag || orderDrag.pointerId!==ev.pointerId) return;
-      if(!orderDrag.moved && Math.hypot(ev.clientX-orderDrag.x0, ev.clientY-orderDrag.y0)<5) return;
-      orderDrag.moved = true;
-      orderDrag.row.classList.add("sch-dragging");
-      orderDrag.row.setAttribute("aria-grabbed", "true");
-      ev.preventDefault();
-      const target = document.elementFromPoint(ev.clientX, ev.clientY)?.closest("[data-sch-order]");
-      orderRows.forEach(x=>x.classList.remove("sch-drop-before", "sch-drop-after"));
-      if(!target || target.dataset.schOrder===orderDrag.id){
-        orderDrag.targetId = null;
-        return;
-      }
-      const r = target.getBoundingClientRect();
-      orderDrag.targetId = target.dataset.schOrder;
-      orderDrag.placeAfter = ev.clientY >= r.top+r.height/2;
-      target.classList.add(orderDrag.placeAfter ? "sch-drop-after" : "sch-drop-before");
-    });
-    const finishOrderDrag = ev=>{
-      if(!orderDrag || orderDrag.pointerId!==ev.pointerId) return;
-      const drag = orderDrag;
-      orderDrag = null;
-      try{ drag.row.releasePointerCapture(ev.pointerId); }catch(_){}
-      clearOrderMarkers();
-      if(!drag.moved || !drag.targetId) return;
-      suppressOrderClick = true;
-      ev.preventDefault();
-      ev.stopPropagation();
-      reorderSchematics(drag.id, drag.targetId, drag.placeAfter);
-      setTimeout(()=>{ suppressOrderClick = false; }, 0);
-    };
-    row.addEventListener("pointerup", finishOrderDrag);
-    row.addEventListener("pointercancel",ev=>{
-      if(!orderDrag || orderDrag.pointerId!==ev.pointerId) return;
-      const drag = orderDrag;
-      orderDrag = null;
-      try{ drag.row.releasePointerCapture(ev.pointerId); }catch(_){}
-      clearOrderMarkers();
-    });
-  });
-  root.querySelectorAll("[data-open]").forEach(e=>e.addEventListener("click",ev=>{
-    if(suppressOrderClick || ev.target.closest(".acts")) return;
-    const id = e.dataset.open;
-    openSchTab(id);
-  }));
+  bindProjectExplorer(root);
   root.querySelectorAll("[data-settop]").forEach(e=>e.addEventListener("click",ev=>{
     ev.stopPropagation();
     state.project.topId = e.dataset.settop;
@@ -3026,7 +3118,6 @@ function renderProjectTree(){
     exportCustomComponent(e.dataset.exportCustom);
   }));
   bindCustomDeletion(root);
-  bindPalettePlacement(root);
 }
 function deleteCustomComponent(name){
   const definition=state.project.customs[name];if(!definition)return false;
@@ -3046,6 +3137,8 @@ function deleteCustomComponent(name){
   if(state.componentPlacement?.draft.type===type)cancelComponentPlacement();
   if(state.vhdlSourceEdit?.project===state.project && [state.vhdlSourceEdit.name,state.vhdlSourceEdit.root].includes(name))state.vhdlSourceEdit=null;
   delete state.project.customs[name];removeInstancesOf(type);
+  state.vhdlTabs=state.vhdlTabs.filter(n=>n!==name);
+  if(state.activeVhdl===name)state.activeVhdl=null;
   if(instances){
     affected.forEach(s=>healJunctions(s));
     state.selection=new Set([...state.selection].filter(id=>!!comp(id)));
@@ -3179,6 +3272,7 @@ function openSchTab(id){
   if(state.placementMode && id!==state.activeId){
     toast("จบหรือยกเลิก Placement Mode ก่อนเปลี่ยน schematic","warn",2800); return;
   }
+  state.activeVhdl=null;
   state.activeId = id;
   if(!state.openTabs.includes(id)) state.openTabs.push(id);
   state.selection.clear();
@@ -3204,12 +3298,17 @@ function renderSchTabs(){
   state.openTabs.forEach(id=>{
     const sch = state.project.schematics[id]; if(!sch) return;
     const isTop = id===state.project.topId;
-    const isA = id===state.activeId;
+    const isA = !state.activeVhdl&&id===state.activeId;
     html.push(`<button class="sch-tab ${isA?"active":""} ${isTop?"top":""}" data-tab="${id}">
       ${esc(sch.name)}
       <span class="close" data-close="${id}">✕</span>
     </button>`);
   });
+  state.vhdlTabs=state.vhdlTabs.filter(name=>state.project.customs[name]?.moduleKind==='vhdl');
+  for(const name of state.vhdlTabs){
+    const cc=state.project.customs[name],dirty=getVhdlSourceDraft(state.project,name).source!==cc.vhdl;
+    html.push(`<button class="sch-tab vhdl ${state.activeVhdl===name?'active':''}" data-vhdl-tab="${esc(name)}">${esc(cc.displayName||name)}<span class="dirty">${dirty?'*':''}</span><span class="close" data-vhdl-close="${esc(name)}">✕</span></button>`);
+  }
   html.push(`<button class="sch-newbtn" data-act="new-sch" title="New schematic">＋</button>`);
   root.innerHTML = html.join("");
   root.querySelectorAll("[data-tab]").forEach(e=>e.addEventListener("click",ev=>{
@@ -3220,6 +3319,35 @@ function renderSchTabs(){
     ev.stopPropagation();
     closeSchTab(e.dataset.close);
   }));
+  root.querySelectorAll('[data-vhdl-tab]').forEach(b=>b.onclick=ev=>{if(!ev.target.dataset.vhdlClose)openVhdlTab(b.dataset.vhdlTab);});
+  root.querySelectorAll('[data-vhdl-close]').forEach(b=>b.onclick=ev=>{ev.stopPropagation();closeVhdlTab(b.dataset.vhdlClose);});
+}
+function openVhdlTab(name){
+  if(state.project.customs[name]?.moduleKind!=='vhdl')return false;
+  if(state.placementMode){toast('จบหรือยกเลิก Placement Mode ก่อนเปิด source','warn');return false;}
+  if(state.componentPlacement)cancelComponentPlacement();
+  state.activeVhdl=name;state.vhdlSourceEdit=null;state.pendingWire=null;state.multiWire=null;state.pairWire=null;state.selection.clear();
+  if(!state.vhdlTabs.includes(name))state.vhdlTabs.push(name);
+  setRightTab('inspector');renderAll();autosave();return true;
+}
+function closeVhdlTab(name){
+  state.vhdlTabs=state.vhdlTabs.filter(n=>n!==name);
+  if(state.activeVhdl===name)state.activeVhdl=state.vhdlTabs.at(-1)||null;
+  renderAll();if(!state.activeVhdl)autoFitSheet();autosave();
+}
+function renderVhdlDocument(){
+  const root=$('#vhdlDocument'),name=state.activeVhdl;
+  if(name&&state.project.customs[name]?.moduleKind!=='vhdl')state.activeVhdl=null;
+  const showing=!!state.activeVhdl;
+  root.hidden=!showing;$('.canvas-host').hidden=showing;
+  syncSourceWorkspace();
+  if(!showing){root.innerHTML='';return;}
+  const input=document.activeElement,caret=root.contains?.(input)&&input.tagName==='TEXTAREA'?{start:input.selectionStart,end:input.selectionEnd,top:input.scrollTop,left:input.scrollLeft}:null;
+  renderVhdlModuleSource(root,{project:state.project,name,root:name},{},'document');
+  if(caret){const next=root.querySelector('#vmReplacement');next.focus({preventScroll:true});next.setSelectionRange(caret.start,caret.end);next.scrollTop=caret.top;next.scrollLeft=caret.left;next._vhdlEditor?.scroll();}
+}
+function syncSourceWorkspace(){
+  $('.workspace').classList.toggle('source-wide',!!state.activeVhdl&&!!$('.pane.right [data-rtab="inspector"].active'));
 }
 
 /* =========================================================================
@@ -3326,6 +3454,7 @@ function componentPlacementForActive(){
 }
 function requestPalettePlacement(type,x,y){
   try{
+    if(state.activeVhdl)openSchTab(state.activeId);
     const sch=activeSch();if(!sch||state.placementMode)throw new Error('จบ Placement Mode ก่อนเพิ่ม component');
     if(type.startsWith('SCH:')){const why=subBlockBlockedWhy(type.slice(4),sch.id);if(why)throw new Error(why);}
     setTool('select',true);state.selection.clear();state.pendingParamChange=null;
@@ -7141,6 +7270,12 @@ window.addEventListener("keydown",ev=>{
   const code = ev.code;
   const k = (ev.key||"").toLowerCase();
   const ctl = ev.ctrlKey||ev.metaKey;
+  if(state.activeVhdl){
+    if(ctl&&(code==='KeyS'||k==='s')){saveProjectToFile();ev.preventDefault();}
+    else if(ctl&&(code==='KeyZ'||k==='z')){if(ev.shiftKey)redo();else undo();ev.preventDefault();}
+    else if(ctl&&(code==='KeyY'||k==='y')){redo();ev.preventDefault();}
+    return;
+  }
   const numberTool = !ctl && !ev.altKey && !ev.shiftKey ? NUMBER_TOOL_SHORTCUTS[code] : null;
   const pm=placementForActive();
   if(pm){
@@ -7716,6 +7851,9 @@ function renderInspector(){
 }
 function renderInspectorContents(){
   const root = $("#inspectorPane");
+  if(state.activeVhdl){
+    root.innerHTML='';return;
+  }
   const layoutOpen=!!root.querySelector('[data-inspector-layout]')?.open;
   const sch = activeSch();
   if(!sch){ root.innerHTML = ""; return; }
@@ -7964,6 +8102,7 @@ function zoomFit(){ _fitFor = state.activeProjectId+':'+state.activeId; applyFit
 
 const sheetViews=new Map();
 function autoFitSheet(force,tries){
+  if(state.activeVhdl)return false;
   const key=state.activeProjectId+':'+state.activeId;
   if(!state.activeId||(!force&&key===_fitFor))return false;
   if(_fitFor&&key!==_fitFor)sheetViews.set(_fitFor,{...state.view});
@@ -9707,6 +9846,7 @@ function buildProjectImport(source, destination, options={}){
   const object = v => v && typeof v==="object" && !Array.isArray(v);
   if(!object(P) || !object(P.schematics) || !Object.keys(P.schematics).length)
     throw new Error("โปรเจกต์ไม่มี schematic ที่อ่านได้");
+  const sourceExplorer=source.explorer?projectExplorer(source):null;
   if(!object(P.customs||{})) throw new Error("ข้อมูล custom component ไม่ถูกต้อง");
   P.customs ||= {};
   if(options.legacyPortOrder) preserveLegacySubBlockOrder(P);
@@ -9811,7 +9951,9 @@ function buildProjectImport(source, destination, options={}){
   };
   Object.keys(schematics).forEach(id=>visit("SCH:"+id));
   Object.keys(customs).forEach(id=>visit("CUSTOM:"+id));
-  return {schematics,customs,topId:sidMap.get(P.topId),renamed:rename};
+  const mappedKey=key=>key.startsWith('SCH:')?'SCH:'+sidMap.get(key.slice(4)):'CUSTOM:'+customMap.get(key.slice(7));
+  const explorer=sourceExplorer?{...sourceExplorer,items:Object.fromEntries(Object.entries(sourceExplorer.items).map(([key,folder])=>[mappedKey(key),folder])),order:sourceExplorer.order.map(mappedKey)}:undefined;
+  return {schematics,customs,topId:sidMap.get(P.topId),renamed:rename,explorer};
 }
 /* END TESTABLE PROJECT IMPORT HELPERS */
 
@@ -9836,6 +9978,7 @@ function importProjectData(source, options={}){
   Object.assign(target.customs,staged.customs);
   if(asNew){
     target.topId=staged.topId; target.activeId=staged.topId; target.openTabs=[staged.topId];
+    if(staged.explorer)target.explorer=staged.explorer;
     state.projects[target.id]=target;
     switchProject(target.id);
   }else{
@@ -10038,6 +10181,7 @@ function deserialize(json){
   const pid=Object.hasOwn(built,o.workspace?.activeId) ? o.workspace.activeId : Object.keys(built)[0];
   state.projects=built; state.activeProjectId=pid; state.project=built[pid];
   state.activeId=state.project.activeId; state.openTabs=state.project.openTabs.slice();
+  restoreVhdlTabs();
   state.selection.clear(); state.pendingWire=null; state.clipboard=null; state.drag=null;
   state.vhdlSourceEdit=null;state.pairWire=null;
   for(const {proj,fanoutFixups} of repairs){
@@ -10092,6 +10236,13 @@ function stashProjectUi(){
   if(!p) return;
   p.openTabs = (state.openTabs||[]).slice();
   p.activeId = state.activeId;
+  if(state.vhdlTabs.length||p.vhdlTabs)p.vhdlTabs=state.vhdlTabs.slice();
+  if(state.activeVhdl||p.activeVhdl)p.activeVhdl=state.activeVhdl;
+}
+function restoreVhdlTabs(){
+  const p=state.project;
+  state.vhdlTabs=(Array.isArray(p.vhdlTabs)?p.vhdlTabs:[]).filter(n=>p.customs[n]?.moduleKind==='vhdl');
+  state.activeVhdl=state.vhdlTabs.includes(p.activeVhdl)?p.activeVhdl:null;
 }
 function switchProject(pid){
   const p = state.projects[pid];
@@ -10102,6 +10253,7 @@ function switchProject(pid){
   state.project = p;
   state.activeId = (p.activeId && p.schematics[p.activeId]) ? p.activeId : Object.keys(p.schematics)[0];
   state.openTabs = (p.openTabs||[]).filter(id=>p.schematics[id]);
+  restoreVhdlTabs();state.vhdlSourceEdit=null;
   if(!state.openTabs.length && state.activeId) state.openTabs = [state.activeId];
   state.selection.clear();
   state.pendingWire = null;
@@ -11513,7 +11665,8 @@ function showVhdlModulePaste(){
   document.body.appendChild(m);autosave();validate();q('#vmSource').focus();
 }
 function vhdlSourceProjectRevision(project){
-  return JSON.stringify(project,(key,value)=>['_net','_nets','_netW','_busNet','_busW'].includes(key)?undefined:value);
+  const {activeId,openTabs,activeVhdl,vhdlTabs,explorer,...circuit}=project;
+  return JSON.stringify(circuit,(key,value)=>['_net','_nets','_netW','_busNet','_busW'].includes(key)?undefined:value);
 }
 function planVhdlModuleReplacement(name,source,P=state.project){
   const old=P.customs[name];if(old?.moduleKind!=='vhdl')throw new Error('ไม่พบ VHDL module');
@@ -11558,10 +11711,11 @@ function showVhdlModuleReplacement(name,params={}){
   getVhdlSourceDraft(project,name);autosave();
   state.vhdlSourceEdit={project,name,root:name};setRightTab('inspector');renderInspector();$('#vmReplacement')?.focus();
 }
-function renderVhdlModuleSource(root,edit,params={}){
+function renderVhdlModuleSource(root,edit,params={},location='inspector'){
   const {project,name}=edit,cc=project.customs[name],draft=getVhdlSourceDraft(project,name);
+  const documentMode=location==='document',refresh=()=>{if(documentMode){renderVhdlDocument();renderSchTabs();}else renderInspector();};
   const owner=project.customs[edit.root||name],sources=[owner?.name,...collectCustomDeps(owner,new Set(),project)].filter(n=>project.customs[n]?.moduleKind==='vhdl');
-  root.innerHTML=`<section class="insp inspector-source" aria-label="VHDL source editor"><h3>Source · ${esc(name)}</h3>
+  root.innerHTML=`<section class="insp inspector-source" aria-label="VHDL source editor"><div class="source-heading"><h3>Source · ${esc(name)}</h3>${documentMode?'':`<button class="btn" id="vmExpand" title="เปิด code เต็มพื้นที่" aria-label="เปิด code เต็มพื้นที่">⤢</button>`}</div>
     ${sources.length>1?`<select id="vmSourceModule" aria-label="Source module" style="width:100%;margin-bottom:8px">${sources.map(n=>`<option value="${esc(n)}" ${n===name?'selected':''}>${esc(n)}</option>`).join('')}</select>`:''}
     <div id="vmReplaceScope"></div>
     ${vhdlEditorMarkup('vmReplacement',draft.source)}
@@ -11570,7 +11724,8 @@ function renderVhdlModuleSource(root,edit,params={}){
     <div class="source-actions"><button class="btn" id="vmExport">Export package</button><button class="btn" id="vmReplaceCancel">ยกเลิก</button><button class="btn btn-primary" id="vmReplaceApply" disabled>Update</button></div></section>`;
   const q=selector=>root.querySelector(selector);let plan=null;
   q('#vmReplacement').value=draft.source;
-  if(sources.length>1)q('#vmSourceModule').onchange=e=>{state.vhdlSourceEdit={project,name:e.target.value,root:edit.root||name};renderInspector();};
+  if(!documentMode)q('#vmExpand').onclick=()=>openVhdlTab(name);
+  if(sources.length>1)q('#vmSourceModule').onchange=e=>{if(documentMode)openVhdlTab(e.target.value);else{state.vhdlSourceEdit={project,name:e.target.value,root:edit.root||name};renderInspector();}};
   const endpoint=(ep,sheet)=>{const c=comp(ep.cid,sheet);return (c?.label||c?.params?.name||c?.type||ep.cid)+'.'+ep.pid;};
   const validate=()=>{
     plan=null;q('#vmReplaceApply').disabled=true;
@@ -11587,10 +11742,10 @@ function renderVhdlModuleSource(root,edit,params={}){
       q('#vmReplaceApply').disabled=q('#vmReplacement').value===cc.vhdl;
     }catch(error){q('#vmReplaceImpact').textContent=error.message;}
   };
-  q('#vmReplaceCancel').onclick=()=>{const error=clearVhdlSourceDraft(project,name);if(error){q('#vmReplacementDraftError').textContent=error;return;}state.vhdlSourceEdit=null;renderInspector();};
+  q('#vmReplaceCancel').onclick=()=>{const error=clearVhdlSourceDraft(project,name);if(error){q('#vmReplacementDraftError').textContent=error;return;}state.vhdlSourceEdit=null;refresh();};
   q('#vmExport').onclick=()=>exportCustomComponent(name);
-  bindVhdlEditor(root,'vmReplacement',source=>{q('#vmReplacementDraftError').textContent=saveVhdlSourceDraft(project,name,source);validate();});
-  q('#vmReplaceApply').onclick=()=>{try{if(plan){applyVhdlModuleReplacement(plan);const error=clearVhdlSourceDraft(project,name);renderInspector();if(error)q('#vmReplacementDraftError').textContent=error;autosave();}}catch(error){q('#vmReplaceImpact').textContent=error.message;q('#vmReplaceApply').disabled=true;}};
+  bindVhdlEditor(root,'vmReplacement',source=>{q('#vmReplacementDraftError').textContent=saveVhdlSourceDraft(project,name,source);validate();if(documentMode)renderSchTabs();});
+  q('#vmReplaceApply').onclick=()=>{try{if(plan){applyVhdlModuleReplacement(plan);const error=clearVhdlSourceDraft(project,name);refresh();if(error)q('#vmReplacementDraftError').textContent=error;autosave();}}catch(error){q('#vmReplaceImpact').textContent=error.message;q('#vmReplaceApply').disabled=true;}};
   validate();
 }
 function showVhdlModuleInfo(name,params={}){showVhdlModuleReplacement(name,params);}
@@ -11705,6 +11860,7 @@ function setRightTab(name){
   $("#inspectorPane").classList.toggle("hidden", name!=="inspector");
   $("#errorsPane").classList.toggle("hidden", name!=="errors");
   $("#vhdlPane").classList.toggle("hidden", name!=="vhdl");
+  syncSourceWorkspace();
 }
 $$(".pane:not(.right) .pane-tabs button").forEach(b=>b.addEventListener("click",()=>setLeftTab(b.dataset.ltab)));
 $$(".pane.right .pane-tabs button").forEach(b=>b.addEventListener("click",()=>setRightTab(b.dataset.rtab)));
@@ -12084,6 +12240,7 @@ function renderAll(){
   renderPalette();
   render();
   renderInspector();
+  renderVhdlDocument();
 }
 
 async function init(){

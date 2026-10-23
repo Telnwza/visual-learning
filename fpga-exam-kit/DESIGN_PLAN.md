@@ -1,7 +1,7 @@
 # Schematic Studio — Configurable Components, Faster Wiring and VHDL Modules
 
 Date: 2026-10-11 (Asia/Bangkok)
-Updated: 2026-10-21 (Asia/Bangkok)
+Updated: 2026-10-23 (Asia/Bangkok)
 Status: Stages 1–9 and the scoped UX implementation are delivered locally, including in-app VHDL creation and source editing. UX-E automated checks, legacy parsing and a downloaded VHDL simulation passed. On 2026-10-20 the user chose to skip further extensive manual verification; the [checklist](UX_MANUAL_TESTS.md) remains optional reference, not a gate for further work. Unperformed checks are not recorded as passed.
 
 Version split: the enhanced application and its tests now live in `schematic2vhdl-v2/`; `schematic2vhdl/index.html` is byte-for-byte the verified GitHub original at commit `a101f195790a4a833e98c271d1fda3a50b0807d3`. New work targets v2. The dashboard links to both versions, browser storage is isolated, and the portable project/module formats are unchanged. Historical commands below record their original paths; linked test files now point to v2.
@@ -719,3 +719,13 @@ Delivered:
 - Delete-button pointer/keyboard events leave placement inactive. Deleting an armed module cancels its draft placement/source editor; unrelated definitions and drawing data remain preserved.
 - Focused deletion/import/placement/bundle/isolation regressions passed **70/70**, including nine deletion tests. The browser verified both entry points, Enter on the Project delete button, Undo restoration, and cancellation of a placed-module confirmation. [Checks](../output/playwright/module-delete-2026-10-21/checks.json) · [Project button](../output/playwright/module-delete-2026-10-21/project-button.png).
 - Delivered locally; no commit, push or deployment for this change.
+
+### Project explorer and VHDL document tabs — approved 2026-10-23
+
+- Replace USE AS SUB-BLOCK with one source list inside the active project. Projects and visual folders collapse; folders can contain schematics and VHDL together. Create/rename folders inline, drag files between folders or reorder them, and remove a folder without deleting its files. Folder changes have Undo/Redo and persist in workspace files and autosave; they do not change circuit hierarchy or invalidate generated results.
+- Click a schematic to open its drawing; click VHDL to open a source tab in the center. Drag the same source row onto the current canvas to place one instance using the existing placement transaction. Outside release, Escape, recursion guards and delete controls retain their existing protection. Right-click offers placement and folder selection without requiring drag.
+- Reuse the existing source editor, highlighting, validation, shared drafts and Update logic. Double-clicking a placed VHDL box still opens its Inspector editor, with an expand action to its source tab. Tabs restore per project; closing/switching tabs does not discard drafts. Code navigation and folder metadata do not invalidate source-update plans; real circuit changes still do.
+- Source editing uses the center and temporarily hides the unused Inspector. Check/Generate can still reveal Issues/generated VHDL. Circuit keyboard shortcuts do not edit a hidden drawing while a source tab is active. Legacy workspace files retain the existing format and receive default visual folders; importing a grouped project as a new project remaps its folder entries to fresh source IDs.
+- Delivered locally without new dependencies or original-version changes. Verification covers grouping/persistence/Undo, drag versus open, shared source edits and autosave, plus the existing regression suite. Browser checks use a separate localhost workspace and synthetic modules.
+- Verification: the broad suite passed 807 tests; the final focused regression run passed 134 tests. Native browser interactions verified inline folder creation, mixed folder drops/collapse, direct placement without opening code, shared Inspector/document drafts, source Update after autosave/reload, and Generate revealing the updated generated code.
+- Sidebar action clarity: keep all five actions visible with short labels. Prioritize New schematic and Import VHDL, followed by New VHDL and New folder; keep Split project as a secondary visible action. Use fixed-size SVG icons and larger buttons, with a single-column layout when the sidebar is narrow. The focused explorer/deletion checks passed 23 tests; browser inspection covered 180 px and 220 px sidebars.
