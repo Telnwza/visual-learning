@@ -145,3 +145,59 @@ test('sidebar drops move only grouping, while cancellation and outside release a
  a.handlers.pointerdown(a.event(100,100));a.handlers.pointermove(a.event(500,300));a.handlers.pointercancel();
  assert.equal(a.run('serialize()'),before);assert.equal(a.run('state.componentPlacement'),null);
 });
+test('folder order moves the whole folder with one Undo and persists without changing circuit contents',()=>{
+ const a=fixture();a.run(`const folder=addExplorerFolder('Display');moveExplorerItem('CUSTOM:buffer_box',folder);moveExplorerItem('SCH:'+child.id,folder);
+ updateProjectExplorer(state.project,e=>{e.folders.find(f=>f.id===folder).collapsed=true;},false);snapshot();
+ const before=serialize(),idx=state.history.idx,items=JSON.stringify(projectExplorer().items),sheets=JSON.stringify(state.project.schematics),customs=JSON.stringify(state.project.customs);`);
+ assert.equal(a.run(`reorderExplorerFolder(folder,'schematics',false)`),true);
+ assert.deepEqual(a.json('projectExplorer().folders.map(f=>f.id)'),[a.run('folder'),'schematics','vhdl']);
+ assert.equal(a.run('state.history.idx'),a.run('idx+1'));
+ assert.equal(a.run('JSON.stringify(projectExplorer().items)'),a.run('items'));
+ assert.equal(a.run('JSON.stringify(state.project.schematics)'),a.run('sheets'));assert.equal(a.run('JSON.stringify(state.project.customs)'),a.run('customs'));
+ assert.equal(a.run('projectExplorer().folders[0].collapsed'),true);
+ const saved=a.run('serialize()');a.run('undo()');assert.equal(a.run('serialize()'),a.run('before'));
+ a.run('redo()');assert.equal(a.run('serialize()'),saved);a.run('deserialize(serialize())');assert.equal(a.run('serialize()'),saved);
+});
+test('folder reorder ignores self, missing folders and unchanged positions without adding history',()=>{
+ const a=fixture(),before=a.run('serialize()'),idx=a.run('state.history.idx');
+ for(const code of [`reorderExplorerFolder('schematics','schematics',true)`,`reorderExplorerFolder('missing','vhdl',true)`,`reorderExplorerFolder('vhdl','missing',false)`,`reorderExplorerFolder('schematics','vhdl',false)`,`reorderExplorerFolder('vhdl','schematics',true)`])assert.equal(a.run(code),false);
+ assert.equal(a.run('serialize()'),before);assert.equal(a.run('state.history.idx'),idx);
+});
+function folderDragFixture(){
+ const a=fixture(),handlers=new Map(),classes=()=>({values:new Set(),add(...names){names.forEach(n=>this.values.add(n));},remove(...names){names.forEach(n=>this.values.delete(n));}});
+ const rows=['schematics','vhdl'].map((id,i)=>{
+  const events={};handlers.set(id,events);
+  return {dataset:{folder:id},classList:classes(),setPointerCapture(){},releasePointerCapture(){},getBoundingClientRect:()=>({top:100+i*100,height:30}),addEventListener:(type,fn)=>events[type]=fn};
+ });
+ const groups=rows.map(row=>({dataset:{folderGroup:row.dataset.folder},classList:classes(),querySelector:()=>row}));
+ const root={querySelectorAll:s=>s==='[data-folder]'?rows:s==='.tree-folder-group'?groups:[],contains:e=>groups.includes(e)};
+ a.ctx.root=root;a.ctx.document.elementFromPoint=()=>a.ctx.hit;a.run('bindExplorerFolderDrag(root)');
+ const event=(x,y,extra={})=>({button:0,pointerId:1,clientX:x,clientY:y,target:{closest:()=>null},preventDefault(){},stopPropagation(){},...extra});
+ return {...a,handlers,groups,event};
+}
+test('folder dragging reorders on release without collapsing, opening source or creating a canvas box',()=>{
+ const a=folderDragFixture(),h=a.handlers.get('schematics');a.run('const before=serialize(),idx=state.history.idx');
+ h.pointerdown(a.event(100,110));a.ctx.hit={closest:()=>a.groups[1]};h.pointermove(a.event(110,224));
+ assert.equal(a.run('serialize()'),a.run('before'));assert.ok(a.groups[1].classList.values.has('sch-drop-after'));
+ h.pointerup(a.event(110,224));h.click(a.event(110,224));
+ assert.deepEqual(a.json('projectExplorer().folders.map(f=>f.id)'),['vhdl','schematics']);
+ assert.equal(a.run('projectExplorer().folders.some(f=>f.collapsed)'),false);
+ assert.equal(a.run('state.history.idx'),a.run('idx+1'));assert.equal(a.run('state.activeVhdl'),null);assert.equal(a.run('state.componentPlacement'),null);
+ assert.equal(a.groups[1].classList.values.size,0);
+});
+test('folder clicks still fold once, including after a small pointer movement',()=>{
+ const a=folderDragFixture(),h=a.handlers.get('schematics'),idx=a.run('state.history.idx');
+ h.pointerdown(a.event(100,110));h.pointermove(a.event(102,112));h.pointerup(a.event(102,112));h.click(a.event(102,112));
+ assert.equal(a.run('projectExplorer().folders[0].collapsed'),true);assert.equal(a.run('state.history.idx'),idx);
+});
+test('folder outside release, Escape and pointer cancellation leave order, contents and history intact',()=>{
+ for(const action of ['outside','escape','cancel']){
+  const a=folderDragFixture(),h=a.handlers.get('schematics'),before=a.run('serialize()'),idx=a.run('state.history.idx');
+  h.pointerdown(a.event(100,110));a.ctx.hit={closest:()=>a.groups[1]};h.pointermove(a.event(110,224));
+  if(action==='outside'){a.ctx.hit=null;h.pointerup(a.event(1200,800));}
+  else if(action==='escape'){h.keydown(a.event(110,224,{key:'Escape'}));h.pointerup(a.event(110,224));}
+  else h.pointercancel();
+  assert.equal(a.run('serialize()'),before,action);assert.equal(a.run('state.history.idx'),idx,action);
+  assert.equal(a.groups[1].classList.values.size,0,action);
+ }
+});

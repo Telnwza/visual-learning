@@ -228,6 +228,10 @@ body.sidebar-resizing,body.sidebar-resizing *{cursor:col-resize!important;user-s
 .project-actions button.organize-action:hover{border-color:var(--line)}
 @container project-sidebar (max-width:209px){.project-actions{grid-template-columns:minmax(0,1fr)}}
 .tree-folder .label{font-weight:500}
+.tree-folder{touch-action:none;user-select:none;cursor:grab}
+.tree-folder.sch-dragging{opacity:.42;cursor:grabbing}
+.tree-folder-group.sch-drop-before{box-shadow:inset 0 2px 0 var(--accent)}
+.tree-folder-group.sch-drop-after{box-shadow:inset 0 -2px 0 var(--accent)}
 .tree-file{touch-action:none;position:relative;user-select:none}
 .tree-item input.folder-name{width:100%;min-width:0;box-sizing:border-box;background:var(--bg-2);color:var(--ink);border:1px solid var(--accent);border-radius:3px;padding:3px 5px;font:inherit}
 .tree-item button.tw{background:none;border:none;padding:2px 0;font:inherit}
@@ -2878,6 +2882,14 @@ function reorderExplorerItem(key,target,after){
   if(order.every((k,i)=>k===explorer.order[i]))return false;
   updateProjectExplorer(state.project,e=>{e.order=order;});return true;
 }
+function reorderExplorerFolder(id,targetId,after){
+  const explorer=projectExplorer(),ids=explorer.folders.map(f=>f.id);
+  if(id===targetId||!ids.includes(id)||!ids.includes(targetId))return false;
+  const folders=explorer.folders.filter(f=>f.id!==id),index=folders.findIndex(f=>f.id===targetId)+(after?1:0);
+  folders.splice(index,0,explorer.folders.find(f=>f.id===id));
+  if(folders.every((f,i)=>f.id===ids[i]))return false;
+  updateProjectExplorer(state.project,e=>{e.folders=folders;});return true;
+}
 function editExplorerFolder(id=null){
   const folder=projectExplorer().folders.find(f=>f.id===id);
   state.explorerNameEdit={project:state.project,id,name:folder?.name||'New folder'};
@@ -2914,7 +2926,7 @@ function bindProjectExplorer(root){
     if(p===state.project)updateProjectExplorer(p,e=>{e.collapsed=active?!e.collapsed:false;},false);
   });
   root.querySelector('[data-new-folder]')?.addEventListener('click',()=>editExplorerFolder());
-  root.querySelectorAll('[data-folder-fold]').forEach(b=>b.onclick=()=>updateProjectExplorer(state.project,e=>{const f=e.folders.find(f=>f.id===b.dataset.folderFold);f.collapsed=!f.collapsed;},false));
+  bindExplorerFolderDrag(root);
   root.querySelectorAll('[data-folder-rename]').forEach(b=>b.onclick=()=>editExplorerFolder(b.dataset.folderRename));
   root.querySelectorAll('[data-folder-delete]').forEach(b=>b.onclick=()=>deleteExplorerFolder(b.dataset.folderDelete));
   const input=root.querySelector('#explorerFolderName'),edit=state.explorerNameEdit;
@@ -2983,6 +2995,43 @@ function bindProjectExplorer(root){
     row.addEventListener('pointercancel',()=>{if(drag?.placing)cancelComponentPlacement();drag=null;suppressClick=true;clear();row.classList.remove('sch-dragging');});
   });
 }
+function bindExplorerFolderDrag(root){
+  const rows=[...root.querySelectorAll('[data-folder]')];
+  const clear=()=>root.querySelectorAll('.tree-folder-group').forEach(group=>group.classList.remove('sch-drop-before','sch-drop-after'));
+  for(const row of rows){
+    let drag=null,suppressClick=false;
+    const finish=()=>{if(drag)row.releasePointerCapture(drag.pointerId);drag=null;clear();row.classList.remove('sch-dragging');};
+    row.addEventListener('click',ev=>{
+      if(ev.target.closest('.acts'))return;
+      if(suppressClick){suppressClick=false;ev.preventDefault();return;}
+      updateProjectExplorer(state.project,e=>{const f=e.folders.find(f=>f.id===row.dataset.folder);f.collapsed=!f.collapsed;},false);
+    });
+    row.addEventListener('pointerdown',ev=>{
+      if(ev.button!==0||ev.target.closest('.acts')||state.placementMode)return;
+      suppressClick=false;drag={project:state.project,pointerId:ev.pointerId,x:ev.clientX,y:ev.clientY,moved:false,target:null,after:false};row.setPointerCapture(ev.pointerId);
+    });
+    row.addEventListener('pointermove',ev=>{
+      if(!drag||drag.pointerId!==ev.pointerId)return;
+      if(drag.project!==state.project){finish();return;}
+      if(!drag.moved&&Math.hypot(ev.clientX-drag.x,ev.clientY-drag.y)<5)return;
+      drag.moved=true;suppressClick=true;ev.preventDefault();clear();row.classList.add('sch-dragging');drag.target=null;
+      const target=document.elementFromPoint(ev.clientX,ev.clientY)?.closest('.tree-folder-group');
+      if(!target||!root.contains(target)||target.dataset.folderGroup===row.dataset.folder)return;
+      const header=target.querySelector('[data-folder]');if(!header)return;
+      const rect=header.getBoundingClientRect();drag.target=target.dataset.folderGroup;drag.after=ev.clientY>=rect.top+rect.height/2;
+      target.classList.add(drag.after?'sch-drop-after':'sch-drop-before');
+    });
+    row.addEventListener('pointerup',ev=>{
+      if(!drag||drag.pointerId!==ev.pointerId)return;
+      const d=drag;finish();if(!d.moved)return;
+      ev.preventDefault();ev.stopPropagation();
+      const target=document.elementFromPoint(ev.clientX,ev.clientY)?.closest('.tree-folder-group');
+      if(d.project===state.project&&d.target&&target&&root.contains(target)&&target.dataset.folderGroup===d.target)reorderExplorerFolder(row.dataset.folder,d.target,d.after);
+    });
+    row.addEventListener('pointercancel',()=>{suppressClick=true;finish();});
+    row.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&drag){ev.preventDefault();ev.stopPropagation();suppressClick=true;finish();}});
+  }
+}
 
 function reorderSchematics(movingId, targetId, placeAfter){
   const oldOrder = Object.keys(state.project.schematics);
@@ -3043,9 +3092,11 @@ function renderProjectTree(){
     html.push(items.filter(i=>explorer.items[i.key]===null).map(row).join(''));
     for(const folder of explorer.folders){
       const children=items.filter(i=>explorer.items[i.key]===folder.id);
-      if(edit?.id===folder.id){html.push(folderInput());if(!folder.collapsed)html.push(`<div class="tree-children">${children.map(row).join('')}</div>`);continue;}
+      html.push(`<div class="tree-folder-group" data-folder-group="${esc(folder.id)}">`);
+      if(edit?.id===folder.id){html.push(folderInput());if(!folder.collapsed)html.push(`<div class="tree-children">${children.map(row).join('')}</div>`);html.push('</div>');continue;}
       html.push(`<div class="tree-item tree-folder" data-folder="${esc(folder.id)}"><button class="tree-open" data-folder-fold="${esc(folder.id)}" aria-expanded="${!folder.collapsed}" aria-label="${folder.collapsed?'ขยาย':'พับ'} ${esc(folder.name)}"><span class="tw">${folder.collapsed?'▸':'▾'}</span>${folderIcon}<span class="label">${esc(folder.name)}</span></button><span class="cnt">${children.length}</span><span class="acts"><button title="Rename folder" data-folder-rename="${esc(folder.id)}">✎</button><button title="ลบโฟลเดอร์ เก็บไฟล์ไว้" data-folder-delete="${esc(folder.id)}">×</button></span></div>`);
       if(!folder.collapsed)html.push(`<div class="tree-children">${children.map(row).join('')}</div>`);
+      html.push('</div>');
     }
     if(edit&&edit.id===null)html.push(folderInput());
     html.push('</div>');
