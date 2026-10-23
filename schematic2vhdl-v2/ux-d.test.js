@@ -250,7 +250,7 @@ test('writing a new VHDL module adds its exact source to the library in one undo
  assert.equal(a.fields.get('#vmApply').disabled,false);assert.equal(a.run('serialize()'),before);
  a.fields.get('#vmApply').onclick();assert.equal(a.m.removed,true);
  assert.equal(a.run('state.project.customs.param_box.vhdl'),source);assert.equal(a.run('activeSch().components.length'),0);
- assert.deepEqual(a.json('state.paletteRecent.names'),['param_box']);assert.equal(a.run('state.history.idx'),idx+1);
+ assert.deepEqual(a.json('explorerItems().filter(e=>e.kind==="custom").map(e=>e.name)'),['param_box']);assert.equal(a.run('state.history.idx'),idx+1);
  const saved=a.run('serialize()');a.run('undo()');assert.equal(a.run('serialize()'),before);a.run('redo()');assert.equal(a.run('serialize()'),saved);
  a.run('deserialize(serialize())');assert.equal(a.run('serialize()'),saved);
 });

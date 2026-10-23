@@ -268,21 +268,6 @@ body.sidebar-resizing,body.sidebar-resizing *{cursor:col-resize!important;user-s
 .ptile span{font-size:11px;color:var(--ink-dim);font-weight:500}
 .ptile:hover span{color:var(--ink)}
 [data-pal]{touch-action:none;user-select:none}
-.ptile.imported{border-color:var(--accent);background:var(--bg-3)}
-.pal-group h4{display:flex;align-items:center;gap:6px}
-.pal-group h4 button{margin-left:auto;background:none;border:0;color:var(--accent);cursor:pointer;font-size:11px}
-.module-import{margin:8px;padding:10px;border:1px solid var(--line-2);border-radius:6px}
-.module-import [role="alert"]{color:var(--err);overflow-wrap:anywhere;margin-bottom:8px}
-.module-import details{margin:8px 0;font-size:11px}
-.module-import ul{list-style:none;margin:6px 0;padding:0;max-height:140px;overflow:auto}
-.module-import li{display:flex;align-items:center;gap:6px;margin:4px 0}
-.module-import li span{min-width:0;flex:1;overflow-wrap:anywhere}
-.module-import .actions{display:flex;gap:6px;flex-wrap:wrap}
-.module-import select{width:100%;min-width:0;margin:4px 0 8px}
-.module-import .module-choices{max-height:240px;overflow:auto;margin:4px 0 8px}
-.module-import .module-choices label{display:flex;align-items:center;gap:6px;padding:4px 0;overflow-wrap:anywhere}
-.module-import .module-file{font-size:10px;color:var(--muted);overflow-wrap:anywhere;margin:6px 0 2px}
-.module-import [role="status"]{font-size:11px;margin:6px 0;overflow-wrap:anywhere}
 
 /* ---------- Inspector ---------- */
 .insp{padding:12px}
@@ -401,6 +386,25 @@ body.sidebar-resizing,body.sidebar-resizing *{cursor:col-resize!important;user-s
 .modal.vhdl-editor{width:960px}
 .modal.vhdl-editor .vhdl-code-editor{height:min(55vh,480px);min-height:240px}
 .modal.vhdl-editor .vhdl-source-editor textarea{height:100%;min-height:0;resize:none}
+.modal.vhdl-import{width:620px}
+.modal.vhdl-import.editing{width:1040px}
+.vhdl-import .import-files{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.vhdl-import .import-files select{flex:1;min-width:0}
+.vhdl-import .import-files span{flex:1;min-width:0;overflow-wrap:anywhere}
+.vhdl-import [data-import-error]{color:var(--err);overflow-wrap:anywhere;margin-bottom:12px}
+.vhdl-import [data-import-error]:empty{display:none}
+.vhdl-import .import-work{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.vhdl-import.editing .import-work:has([data-import-choices]:not([hidden])){grid-template-columns:minmax(220px,1fr) minmax(0,2fr)}
+.vhdl-import [data-import-choices]>select{width:100%;margin:5px 0 12px}
+.vhdl-import .module-choices{max-height:300px;overflow:auto;margin:8px 0}
+.vhdl-import .module-choices label{display:flex;align-items:center;gap:7px;padding:6px 0;overflow-wrap:anywhere}
+.vhdl-import .module-file{font-size:11px;color:var(--muted);overflow-wrap:anywhere;margin:8px 0 2px}
+.vhdl-import [data-import-single] select{width:100%;margin-top:5px}
+.vhdl-import [data-import-summary]{color:var(--ink-dim);font-size:12px;align-self:center;margin-right:auto}
+.vhdl-import .modal-foot{flex-wrap:wrap;align-items:center}
+.vhdl-import [data-import-multiple][hidden],.vhdl-import [data-import-single][hidden],.vhdl-import [data-import-editor][hidden],.vhdl-import [data-import-choices][hidden]{display:none}
+.tree-file.imported{background:var(--bg-3);box-shadow:inset 2px 0 var(--accent)}
+@media(max-width:760px){.vhdl-import.editing .import-work:has([data-import-choices]:not([hidden])){grid-template-columns:minmax(0,1fr)}}
 .port-row{display:grid;grid-template-columns:1fr 90px 80px 30px;gap:6px;margin-bottom:6px;align-items:center}
 .port-row input,.port-row select{width:100%}
 .port-row button{background:transparent;border:1px solid var(--line);color:var(--err);width:30px;height:30px;border-radius:5px;cursor:pointer}
@@ -2594,7 +2598,6 @@ const state = {
   wireError:null,
   pendingDelete:null,
   moduleImport:null,        // pending files; never part of a saved project
-  paletteRecent:null,
   componentPlacement:null,
   pendingParamChange:null,
   vhdlSourceEdit:null,
@@ -3217,12 +3220,8 @@ function paletteEntries(query=""){
 }
 function renderPalette(){
   const root = $("#palettePane");
-  if(state.moduleImport&&state.moduleImport.project!==state.project){state.moduleImport.cancelled=true;state.moduleImport=null;}
-  if(state.paletteRecent?.project!==state.project)state.paletteRecent=null;
-  const pending=state.moduleImport;
-  const recent=new Set((state.paletteRecent?.names||[]).filter(name=>state.project.customs[name]).map(name=>'CUSTOM:'+name));
+  if(state.moduleImport&&state.moduleImport.project!==state.project)cancelVhdlModuleImport();
   const groups = [
-    ...(recent.size?[["recent","นำเข้าล่าสุด · "+recent.size]]:[]),
     ["io",   "I/O PORTS"],
     ["gate", "LOGIC GATES"],
     ["mux",  "MUX / DEMUX"],
@@ -3231,46 +3230,29 @@ function renderPalette(){
     ["bus",  "BUS TAP"],
     ["ff",   "FLIP-FLOPS"],
     ["doc",  "DOCUMENTATION"],
-    ["reuse","REUSABLE CIRCUITS"],
   ];
-  const entries=paletteEntries();
+  const entries=paletteEntries().filter(entry=>entry.category!=='reuse');
   const html = [];
-  if(pending&&(pending.reading||pending.error||pending.files.length))html.push(`<section class="module-import" aria-label="Import VHDL Module">
-    ${pending.reading?'<div role="status">กำลังอ่านไฟล์…</div>':`<div role="alert" data-import-error>${esc(pending.error||'')}</div>`}
-    ${pending.choose&&!pending.reading?vhdlImportChoiceMarkup(pending):''}
-    ${pending.files.length?`<details><summary>ไฟล์ ${pending.files.length} รายการ</summary><ul>${pending.files.map((file,i)=>`<li><span>${esc(file.fileName||'VHDL')}</span><button class="btn" data-import-remove="${i}" aria-label="เอา ${esc(file.fileName||'VHDL')} ออก" ${pending.reading?'disabled':''}>×</button></li>`).join('')}</ul></details>`:''}
-    <div class="actions">${pending.choose&&!pending.reading?'<button class="btn btn-primary" data-import-go>นำเข้า</button>':''}<button class="btn" data-import-add ${pending.reading?'disabled':''}>เพิ่มไฟล์…</button><button class="btn" data-import-cancel>ยกเลิก</button></div></section>`);
-  html.push(`<div class="palette-search">${pending&&(pending.reading||pending.error||pending.files.length)?'':`<div style="display:flex;gap:6px"><button class="btn" data-act="import-vhdl-module" style="flex:1">↓ Import Module…</button><button class="btn" data-act="paste-vhdl-module" title="New VHDL Module" aria-label="New VHDL Module">+</button></div>`}<input type="search" id="paletteSearch" aria-label="ค้นหา component" placeholder="ค้นหา component / วงจรย่อย" value="${esc(state.paletteSearch||"")}"></div><div class="palette">`);
+  html.push(`<div class="palette-search"><input type="search" id="paletteSearch" aria-label="ค้นหา component" placeholder="ค้นหา component" value="${esc(state.paletteSearch||"")}"></div><div class="palette">`);
   for(const [cat,name] of groups){
-    html.push(`<div class="pal-group"><h4>${name}${cat==='recent'?'<button data-palette-all>ทั้งหมด</button>':''}</h4><div class="pal-grid">`);
+    html.push(`<div class="pal-group"><h4>${name}</h4><div class="pal-grid">`);
     for(const entry of entries){
-      if((recent.has(entry.type)?'recent':entry.category) !== cat) continue;
+      if(entry.category !== cat) continue;
       const t=entry.type,td=entry.td;
       const p = td.defaultParams || {};
       const sz = td.size(p);
       const sc = Math.min(60/sz.w, 36/sz.h, 1);
-      html.push(`<div class="ptile${recent.has(t)?' imported':''}" draggable="true" tabindex="0" role="button" aria-label="วาง ${esc(td.label)}" data-pal="${esc(t)}" data-search="${esc((t+" "+td.label).toLowerCase())}">
+      html.push(`<div class="ptile" draggable="true" tabindex="0" role="button" aria-label="วาง ${esc(td.label)}" data-pal="${esc(t)}" data-search="${esc((t+" "+td.label).toLowerCase())}">
         <svg width="60" height="40" viewBox="0 0 ${sz.w} ${sz.h}" preserveAspectRatio="xMidYMid meet">
           ${td.shape(p)}
         </svg>
         <span>${esc(td.label)}</span>
-        ${t.startsWith('CUSTOM:')?`<button class="module-remove" title="ลบโมดูล ${esc(td.label)}" aria-label="ลบโมดูล ${esc(td.label)}" data-del-custom="${esc(t.slice(7))}">×</button>`:''}
       </div>`);
     }
     html.push(`</div></div>`);
   }
   html.push(`</div>`);
   root.innerHTML = html.join("");
-  root.querySelector('[data-import-add]')?.addEventListener('click',showVhdlModuleImport);
-  root.querySelector('[data-import-cancel]')?.addEventListener('click',()=>cancelVhdlModuleImport(pending));
-  if(pending?.choose&&!pending.reading)bindVhdlImportChoices(root,pending);
-  root.querySelectorAll('[data-import-remove]').forEach(button=>button.addEventListener('click',()=>{
-    pending.files.splice(Number(button.dataset.importRemove),1);
-    if(pending.files.length)finishVhdlModuleImport(pending);else cancelVhdlModuleImport(pending);
-  }));
-  root.querySelector('[data-palette-all]')?.addEventListener('click',()=>{
-    state.paletteRecent=null;state.paletteSearch='';renderPalette();root.scrollTop=0;
-  });
   const filter=()=>{
     const search=root.querySelector('#paletteSearch').value.trim().toLowerCase();state.paletteSearch=search;
     root.querySelectorAll('.ptile').forEach(tile=>tile.hidden=!tile.dataset.search.includes(search));
@@ -3278,7 +3260,6 @@ function renderPalette(){
   };
   root.querySelector('#paletteSearch').addEventListener("input",filter);
   filter();
-  bindCustomDeletion(root);
   bindPalettePlacement(root);
 }
 function bindPalettePlacement(root){
@@ -11520,15 +11501,20 @@ function moduleInputDefault(cc,pid){return cc?.moduleKind==='vhdl'&&Object.hasOw
 function moduleUsageNotes(cc){return (cc.inputNotes||(REGISTER_KINDS.includes(cc.libraryId)?'Async reset_value ใช้ CONST หรือค่าเริ่มต้น 0 · rst active high · reset_value ต่อกับ CONST ได้เต็ม WIDTH bit':''))+' · ขาที่ไม่ต่อ: '+Object.entries(cc.defaultInputs||{}).map(([name,value])=>name+'='+value).join(', ');}
 function revealVhdlModuleImport(added,skipped=[]){
   added=added.filter(cc=>!cc.importDependency);skipped=skipped.filter(cc=>!cc.importDependency);
-  const names=(added.length?added:skipped).map(cc=>vhdlModuleKey(state.project,cc.name));
-  state.paletteRecent={project:state.project,names};state.paletteSearch='';
-  setLeftTab('palette');renderPalette();$('#palettePane').scrollTop=0;
+  const keys=new Set((added.length?added:skipped).map(cc=>'CUSTOM:'+vhdlModuleKey(state.project,cc.name)));
+  const explorer=projectExplorer(),folders=new Set([...keys].map(key=>explorer.items[key]));
+  if(explorer.collapsed||explorer.folders.some(f=>folders.has(f.id)&&f.collapsed))
+    updateProjectExplorer(state.project,e=>{e.collapsed=false;for(const f of e.folders)if(folders.has(f.id))f.collapsed=false;},false);
+  setLeftTab('project');renderProjectTree();renderPalette();
+  const rows=[...$('#projectPane').querySelectorAll('[data-explorer-item]')].filter(row=>keys.has(row.dataset.explorerItem));
+  rows.forEach(row=>row.classList.add('imported'));rows[0]?.scrollIntoView?.({block:'nearest'});
   toast(added.length?`นำเข้า ${added.length} โมดูล${skipped.length?' · มีอยู่แล้ว '+skipped.length:''}`:`มีอยู่แล้ว ${skipped.length} โมดูล`,'ok');
 }
-function cancelVhdlModuleImport(session=state.moduleImport){
+function cancelVhdlModuleImport(session=state.moduleImport,restoreFocus=true){
   if(!session)return;
-  session.cancelled=true;session.input?.remove();
-  if(state.moduleImport===session){state.moduleImport=null;renderPalette();}
+  session.cancelled=true;session.input?.remove();session.dialog?.remove();session.dialog=null;
+  if(state.moduleImport===session)state.moduleImport=null;
+  if(restoreFocus)session.returnFocus?.focus?.();
 }
 function planVhdlSchematicImport(files,P=state.project){
   const target={...P,schematics:{...P.schematics},customs:{...P.customs}},schematics={},customs={},tops=[];
@@ -11561,6 +11547,7 @@ function prepareVhdlImportChoice(session){
   session.catalog=catalog;
   session.selected=new Set(session.selected?[...session.selected].filter(id=>ids.has(id)):catalog.roots);
   if(!session.mode)session.mode='modules';
+  if(session.mode==='schematic'&&!catalog.stamps.every(Boolean))session.mode='modules';
   if(!ids.has(session.root))session.root=catalog.roots.length===1?catalog.roots[0]:'';
   session.choose=!!session.choose||catalog.modules.length>1||catalog.stamps.some(Boolean);
   return catalog;
@@ -11577,31 +11564,117 @@ function vhdlImportChoiceMarkup(session){
   }).join('');
   return `<label for="vhdlImportMode">นำเข้าเป็น</label><select id="vhdlImportMode" data-import-mode>
     <option value="modules">VHDL · เลือกโมดูล</option><option value="single">VHDL · กล่องเดียว</option>
-    <option value="schematic" ${canRestore?'':'disabled'}>Schematic เดิม${canRestore?'':' · ไม่มีข้อมูลวงจร'}</option></select>
+    ${canRestore?'<option value="schematic">Schematic เดิม</option>':''}</select>
     <div data-import-multiple><button class="btn" data-import-all>เลือกทั้งหมด</button><div class="module-choices">${choices}</div></div>
     <div data-import-single><label for="vhdlImportRoot">วงจรหลัก</label><select id="vhdlImportRoot" data-import-root><option value="">เลือก entity…</option>${modules.map(m=>`<option value="${esc(m.id)}">${esc(m.name)}${stamps.length>1?' · '+esc(m.fileName):''}</option>`).join('')}</select></div>
-    <div role="status" data-import-summary></div>`;
+    `;
+}
+function refreshVhdlImportPlan(session){
+  session.plan=null;session.catalog=null;
+  try{
+    prepareVhdlImportChoice(session);
+    session.plan=session.mode==='schematic'?planVhdlSchematicImport(session.files,session.project):
+      planVhdlModuleImport(session.files,session.project,session.choose?vhdlImportOptions(session):{});
+    session.error='';
+  }catch(error){session.error=error.message;}
+  return session.plan;
+}
+function syncVhdlImportStatus(session){
+  const root=session.dialog;if(!root)return;
+  root.querySelector('[data-import-error]').textContent=session.error||'';
+  root.querySelector('[data-import-go]').disabled=session.reading||!session.plan;
+  root.querySelector('[data-import-add]').disabled=session.reading;
+  root.querySelector('[data-import-remove]').disabled=session.reading||!session.files.length;
+  root.querySelector('[data-import-file]').disabled=session.reading||session.files.length<2;
+  root.querySelector('#viSource').disabled=session.reading;
+  let summary=session.reading?'กำลังอ่านไฟล์…':'';
+  if(!session.reading&&session.plan){
+    const plan=session.plan;
+    if(session.mode==='schematic')summary=Object.keys(plan.schematics).length+' schematics';
+    else{
+      const dependencies=plan.modules.length+plan.skipped.length-plan.visible.length;
+      summary=plan.visible.length+' โมดูล'+(dependencies>0?' · dependency '+dependencies:'');
+    }
+  }
+  root.querySelector('[data-import-summary]').textContent=summary;
+}
+function updateVhdlImportSource(session,source){
+  if(session.cancelled||session.reading||state.moduleImport!==session||state.project!==session.project)return false;
+  const file=session.files[session.sourceIndex||0];if(!file)return false;
+  file.vhdl=source;session.choose=true;refreshVhdlImportPlan(session);renderVhdlModuleImport(session);return true;
+}
+function renderVhdlModuleImport(session,{openError=false}={}){
+  if(session.cancelled||state.moduleImport!==session||state.project!==session.project)return;
+  if(openError&&session.files.length&&!session.error.startsWith('ขาดไฟล์ ')){
+    session.editorOpen=true;
+    const invalid=session.catalog?.modules.find(m=>m.error&&session.selected?.has(m.id))||
+      session.catalog?.modules.find(m=>session.error.includes(': '+m.name+' ·')||session.error.endsWith(': '+m.name));
+    const index=invalid?.origin??session.files.findIndex(f=>f.fileName&&session.error.includes(f.fileName));
+    if(index>=0)session.sourceIndex=index;
+  }
+  if(!session.dialog){
+    const m=document.createElement('div');m.className='modal-bg';session.dialog=m;
+    m.innerHTML=`<div class="modal vhdl-editor vhdl-import" role="dialog" aria-modal="true" aria-labelledby="vhdlImportTitle">
+      <h2 id="vhdlImportTitle">Import VHDL <button class="close" aria-label="ยกเลิก">×</button></h2>
+      <div class="modal-body"><div class="import-files"><select data-import-file aria-label="ไฟล์ VHDL"></select><button class="btn" data-import-edit>ดูโค้ด</button><button class="btn" data-import-remove>เอาไฟล์ออก</button></div>
+        <div role="alert" data-import-error></div><div class="import-work"><div data-import-choices></div><section data-import-editor hidden></section></div></div>
+      <div class="modal-foot"><button class="btn" data-import-add>เพิ่มไฟล์…</button><span role="status" data-import-summary></span><button class="btn" data-import-cancel>ยกเลิก</button><button class="btn btn-primary" data-import-go>Import</button></div></div>`;
+    const q=s=>m.querySelector(s),cancel=()=>cancelVhdlModuleImport(session);
+    m.onCancel=cancel;q('.close').onclick=cancel;q('[data-import-cancel]').onclick=cancel;
+    q('[data-import-add]').onclick=showVhdlModuleImport;
+    q('[data-import-go]').onclick=()=>finishVhdlModuleImport(session,true);
+    q('[data-import-file]').onchange=()=>{session.sourceIndex=Number(q('[data-import-file]').value);renderVhdlModuleImport(session);};
+    q('[data-import-edit]').onclick=()=>{session.editorOpen=!session.editorOpen;renderVhdlModuleImport(session);if(session.editorOpen)q('#viSource').focus?.();};
+    q('[data-import-remove]').onclick=()=>{
+      if(session.reading)return;
+      const index=session.sourceIndex||0,shift=id=>{
+        if(!id)return '';
+        const colon=id.indexOf(':'),origin=Number(id.slice(0,colon));
+        return origin===index?'':(origin>index?origin-1:origin)+id.slice(colon);
+      };
+      session.selected=session.selected&&new Set([...session.selected].map(shift).filter(Boolean));session.root=shift(session.root);
+      session.files.splice(index,1);session.sourceIndex=0;
+      if(!session.files.length){cancel();return;}
+      finishVhdlModuleImport(session);
+    };
+    m.addEventListener('keydown',ev=>{
+      if(ev.key!=='Tab')return;
+      const controls=[...m.querySelectorAll('button,input,select,textarea')].filter(el=>!el.disabled&&el.getClientRects().length);
+      const first=controls[0],last=controls.at(-1);
+      if(ev.shiftKey&&document.activeElement===first){ev.preventDefault();last.focus();}
+      else if(!ev.shiftKey&&document.activeElement===last){ev.preventDefault();first.focus();}
+    });
+    document.body.appendChild(m);
+    q('[data-import-add]').focus?.();
+  }
+  const root=session.dialog,q=s=>root.querySelector(s);
+  session.sourceIndex=Math.max(0,Math.min(session.sourceIndex||0,session.files.length-1));
+  q('[data-import-file]').innerHTML=session.files.map((file,i)=>`<option value="${i}">${esc(file.fileName||'VHDL')}</option>`).join('');
+  q('[data-import-file]').value=String(session.sourceIndex);
+  q('.vhdl-import').classList.toggle('editing',!!session.editorOpen);
+  q('[data-import-editor]').hidden=!session.editorOpen;
+  q('[data-import-edit]').textContent=session.editorOpen?'ซ่อนโค้ด':'ดูโค้ด';
+  q('[data-import-edit]').disabled=!session.files.length;
+  const file=session.files[session.sourceIndex];
+  if(session.displayedFile!==file||!session.editorBound){
+    session.displayedFile=file;session.editorBound=true;
+    q('[data-import-editor]').innerHTML=vhdlEditorMarkup('viSource',file?.vhdl||'');
+    q('#viSource').value=file?.vhdl||'';
+    bindVhdlEditor(root,'viSource',source=>updateVhdlImportSource(session,source));
+  }
+  q('[data-import-choices]').hidden=!session.catalog?.modules.length;
+  q('[data-import-choices]').innerHTML=session.catalog?.modules.length?vhdlImportChoiceMarkup(session):'';
+  if(session.catalog?.modules.length)bindVhdlImportChoices(root,session);
+  syncVhdlImportStatus(session);
+  if(openError&&session.editorOpen)q('#viSource').focus?.();
 }
 function bindVhdlImportChoices(root,session){
   const q=s=>root.querySelector(s),mode=q('[data-import-mode]'),single=q('[data-import-root]');
   mode.value=session.mode;single.value=session.root;
-  const refresh=()=>{
+  const refresh=(revalidate=true)=>{
     q('[data-import-multiple]').hidden=session.mode!=='modules';q('[data-import-single]').hidden=session.mode!=='single';
     q('[data-import-all]').textContent=session.selected.size===session.catalog.modules.length?'ไม่เลือกทั้งหมด':'เลือกทั้งหมด';
-    q('[data-import-go]').disabled=true;
-    try{
-      let summary;
-      if(session.mode==='schematic'){
-        if(!session.catalog.stamps.every(Boolean))throw new Error('บางไฟล์ไม่มีข้อมูล schematic เดิม');
-        summary=session.catalog.stamps.reduce((n,s)=>n+s.schematics.length,0)+' schematics';
-      }else{
-        const plan=planVhdlModuleImport(session.files,session.project,vhdlImportOptions(session));
-        const dependencies=plan.modules.length+plan.skipped.length-plan.visible.length;
-        summary=plan.visible.length+' โมดูล'+(dependencies>0?' · dependency '+dependencies:'');
-      }
-      q('[data-import-summary]').textContent=summary;q('[data-import-error]').textContent=session.error||'';
-      q('[data-import-go]').disabled=false;
-    }catch(error){q('[data-import-summary]').textContent='';q('[data-import-error]').textContent=error.message;}
+    if(revalidate)refreshVhdlImportPlan(session);syncVhdlImportStatus(session);
   };
   mode.addEventListener('change',()=>{session.mode=mode.value;session.error='';refresh();});
   single.addEventListener('change',()=>{session.root=single.value;session.error='';refresh();});
@@ -11615,24 +11688,25 @@ function bindVhdlImportChoices(root,session){
     root.querySelectorAll('[data-import-entity]').forEach(input=>input.checked=session.selected.has(input.dataset.importEntity));
     session.error='';refresh();
   });
-  q('[data-import-go]').addEventListener('click',()=>finishVhdlModuleImport(session,true));refresh();
+  refresh(false);
 }
 function finishVhdlModuleImport(session,commit=false){
   if(session.cancelled||state.moduleImport!==session||state.project!==session.project)return false;
   try{
-    prepareVhdlImportChoice(session);session.error='';
-    if(session.choose&&!commit){renderPalette();return false;}
+    const plan=refreshVhdlImportPlan(session);
+    if(!plan){session.choose=true;renderVhdlModuleImport(session,{openError:true});return false;}
+    if(session.choose&&!commit){renderVhdlModuleImport(session);return false;}
     if(session.mode==='schematic'){
-      const plan=planVhdlSchematicImport(session.files,session.project);applyVhdlSchematicImport(plan);
-      state.moduleImport=null;setLeftTab('project');return true;
+      applyVhdlSchematicImport(plan);cancelVhdlModuleImport(session,false);setLeftTab('project');return true;
     }
-    const plan=planVhdlModuleImport(session.files,session.project,session.choose?vhdlImportOptions(session):{}),added=applyVhdlModuleImport(plan);
-    state.moduleImport=null;revealVhdlModuleImport(added,plan.skipped);return true;
-  }catch(error){session.error=error.message;renderPalette();return false;}
+    const added=applyVhdlModuleImport(plan);
+    cancelVhdlModuleImport(session,false);revealVhdlModuleImport(added,plan.skipped);return true;
+  }catch(error){session.error=error.message;session.plan=null;renderVhdlModuleImport(session,{openError:true});return false;}
 }
 async function readVhdlModuleFiles(session,selected){
   if(session.cancelled||session.reading||state.moduleImport!==session||state.project!==session.project)return false;
-  session.reading=true;session.error='';setLeftTab('palette');renderPalette();
+  session.reading=true;session.error='';
+  if(session.dialog)syncVhdlImportStatus(session);else toast('กำลังอ่านไฟล์…','info',1500);
   try{
     const files=await Promise.all(selected.map(async file=>{
       try{return {fileName:file.name,vhdl:await file.text()};}
@@ -11642,7 +11716,7 @@ async function readVhdlModuleFiles(session,selected){
     for(const file of files)if(!session.files.some(old=>old.fileName===file.fileName&&old.vhdl===file.vhdl))session.files.push(file);
     session.reading=false;return finishVhdlModuleImport(session);
   }catch(error){
-    if(!session.cancelled&&state.moduleImport===session&&state.project===session.project){session.reading=false;session.error=error.message;renderPalette();}
+    if(!session.cancelled&&state.moduleImport===session&&state.project===session.project){session.reading=false;session.error=error.message;session.plan=null;renderVhdlModuleImport(session);}
     return false;
   }
 }
@@ -11650,10 +11724,10 @@ function showVhdlModuleImport(){
   if(state.placementMode){toast('จบ Placement Mode ก่อน Import','info');return;}
   let session=state.moduleImport;
   if(!session||session.project!==state.project){
-    if(session)session.cancelled=true;
-    session={project:state.project,files:[],reading:false,error:'',cancelled:false};state.moduleImport=session;
+    if(session)cancelVhdlModuleImport(session,false);
+    session={project:state.project,files:[],reading:false,error:'',cancelled:false,returnFocus:document.activeElement};state.moduleImport=session;
   }
-  if(session.reading){setLeftTab('palette');return;}
+  if(session.reading)return;
   session.input?.remove();
   const input=document.createElement('input');input.type='file';input.accept='.vhd,.vhdl';input.multiple=true;input.hidden=true;
   session.input=input;document.body.appendChild(input);

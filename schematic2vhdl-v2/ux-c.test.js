@@ -8,11 +8,15 @@ entity ${name} is port(a:in std_logic;y:out std_logic);end;
 architecture rtl of ${name} is begin ${body} end;`});
 const selected=files=>files.map(file=>({name:file.fileName,text:async()=>file.vhdl}));
 function picker(){
- const a=loadApp(),inputs=[];a.ctx.document.createElement=tag=>{
-  assert.equal(tag,'input');const input={clicks:0,removed:false,click(){this.clicks++;},remove(){this.removed=true;}};inputs.push(input);return input;
+ const a=loadApp(),inputs=[],dialogs=[],create=a.ctx.document.createElement;a.ctx.document.createElement=tag=>{
+  if(tag!=='input'){
+   const modal=create(tag),fields=new Map();modal.querySelector=s=>{if(!fields.has(s))fields.set(s,create('div'));return fields.get(s);};
+   modal.remove=()=>{modal.removed=true;};dialogs.push(modal);return modal;
+  }
+  const input={clicks:0,removed:false,click(){this.clicks++;},remove(){this.removed=true;}};inputs.push(input);return input;
  };
  a.ctx.document.body.appendChild=input=>{input.attached=true;};
- return {...a,inputs,open(){a.run('showVhdlModuleImport()');return inputs.at(-1);}};
+ return {...a,inputs,dialogs,open(){a.run('showVhdlModuleImport()');return inputs.at(-1);}};
 }
 test('all 49 raw files import in one transaction, create no canvas instances and round trip through Undo/Redo',()=>{
  const a=loadApp();a.ctx.files=fs.readdirSync(folder).filter(n=>n.endsWith('.vhd')).map(disk);assert.equal(a.ctx.files.length,49);
@@ -71,11 +75,14 @@ test('primary Import opens only an attached multi-file picker, and Cancel change
  input.oncancel();assert.equal(input.removed,true);assert.equal(a.run('state.moduleImport'),null);
  assert.equal(a.run('serialize()'),before);assert.equal(a.run('state.history.idx'),idx);
 });
-test('the primary picker commits a valid file immediately and reveals it despite an old search',async()=>{
- const a=picker();a.run("state.paletteSearch='unrelated';");const before=a.run('serialize()'),idx=a.run('state.history.idx');
+test('the primary picker reveals imported sources in Project despite a palette search and collapsed folders',async()=>{
+ const a=picker();a.run("state.paletteSearch='unrelated';state.project.explorer=projectExplorer();state.project.explorer.collapsed=true;state.project.explorer.folders[1].collapsed=true;snapshot();let leftTab;setLeftTab=name=>{leftTab=name;};");const before=a.run('serialize()'),idx=a.run('state.history.idx');
  const input=a.open();input.files=selected([box()]);await input.onchange();
  assert.equal(input.removed,true);assert.equal(a.run('state.moduleImport'),null);assert.equal(a.run('state.history.idx'),idx+1);
- assert.equal(a.run('state.paletteSearch'),'');assert.deepEqual(a.json('state.paletteRecent.names'),['box']);
+ assert.equal(a.run('leftTab'),'project');
+ assert.equal(a.run('projectExplorer().collapsed'),false);assert.equal(a.run('projectExplorer().folders[1].collapsed'),false);
+ assert.deepEqual(a.json('explorerItems().filter(e=>e.kind==="custom").map(e=>e.name)'),['box']);
+ assert.equal(a.run('activeSch().components.length'),0);
  a.run('undo()');assert.equal(a.run('serialize()'),before);
 });
 test('missing LCD writer retains the controller; adding it offers a root and imports its dependency with one Undo',async()=>{
@@ -88,7 +95,7 @@ test('missing LCD writer retains the controller; adding it offers a root and imp
  assert.equal(a.run('state.moduleImport.choose'),true);assert.equal(a.run('serialize()'),before);
  a.run('finishVhdlModuleImport(state.moduleImport,true)');
  assert.equal(a.run('state.moduleImport'),null);assert.equal(a.run('state.history.idx'),idx+1);
- assert.deepEqual(a.json('state.paletteRecent.names'),['ss_lcd16x2']);
+ assert.deepEqual(a.json('explorerItems().filter(e=>e.kind==="custom").map(e=>e.name)'),['ss_lcd16x2']);
  assert.equal(a.run('state.project.customs.ss_lcd_write.importDependency'),true);
  a.run('undo()');assert.equal(a.run('serialize()'),before);
 });
@@ -124,4 +131,52 @@ test('a read failure reports the filename without losing files that were already
  input=a.open();input.files=[{name:'unreadable.vhd',text:async()=>{throw new Error('read failed');}}];await input.onchange();
  assert.equal(a.run('state.moduleImport.files.length'),1);assert.match(a.run('state.moduleImport.error'),/unreadable.vhd.*read failed/);
  assert.equal(a.run('serialize()'),before);
+});
+test('multi-module choices stay in one popup without navigating or changing the project until Import',async()=>{
+ const a=picker(),before=a.run('serialize()');a.run('const tabs=[];setLeftTab=name=>tabs.push(name);');
+ const input=a.open();input.files=selected([box('first'),box('second')]);await input.onchange();
+ assert.equal(a.dialogs.length,1);assert.deepEqual(a.json('tabs'),[]);assert.equal(a.run('serialize()'),before);
+ const modal=a.dialogs[0];assert.equal(a.run('state.moduleImport.dialog'),modal);
+ assert.equal(modal.querySelector('[data-import-go]').disabled,false);
+ a.run('state.moduleImport.mode="single";state.moduleImport.root="0:first";refreshVhdlImportPlan(state.moduleImport);renderVhdlModuleImport(state.moduleImport);');
+ assert.equal(a.dialogs.length,1);assert.equal(a.run('serialize()'),before);
+ modal.querySelector('[data-import-go]').onclick();
+ assert.equal(modal.removed,true);assert.equal(a.run('state.moduleImport'),null);assert.deepEqual(a.json('tabs'),['project']);
+ assert.deepEqual(a.json('explorerItems().filter(e=>e.kind==="custom").map(e=>e.name)'),['first']);
+});
+test('an invalid later file opens its editable source and imports corrected drafts only after confirmation',async()=>{
+ const a=picker(),before=a.run('serialize()'),bad={fileName:'bad.vhd',vhdl:'invalid source'},input=a.open();
+ input.files=selected([box('peer'),bad]);await input.onchange();
+ const modal=a.dialogs[0];assert.equal(a.run('state.moduleImport.sourceIndex'),1);assert.equal(a.run('state.moduleImport.editorOpen'),true);
+ assert.equal(modal.querySelector('#viSource').value,bad.vhdl);assert.equal(modal.querySelector('[data-import-go]').disabled,true);
+ a.ctx.fixed=box('fixed').vhdl;a.run('updateVhdlImportSource(state.moduleImport,fixed)');
+ assert.equal(a.run('serialize()'),before);assert.equal(a.run('state.moduleImport.files[1].vhdl'),a.ctx.fixed);assert.equal(bad.vhdl,'invalid source');
+ assert.equal(a.dialogs.length,1);assert.equal(modal.querySelector('[data-import-go]').disabled,false);
+ modal.querySelector('[data-import-go]').onclick();assert.deepEqual(a.json('Object.keys(state.project.customs)'),['peer','fixed']);
+ a.run('undo()');assert.equal(a.run('serialize()'),before);
+});
+test('switching source files and adding a missing dependency retain edited drafts in the same popup',async()=>{
+ const a=picker(),before=a.run('serialize()');let input=a.open();
+ input.files=selected([box('root','u:entity work.leaf port map(a,y);')]);await input.onchange();
+ const modal=a.dialogs[0];a.ctx.draft=box('root','-- retained draft\nu:entity work.leaf port map(a,y);').vhdl;
+ a.run('updateVhdlImportSource(state.moduleImport,draft)');
+ input=a.open();input.files=selected([box('leaf')]);await input.onchange();assert.equal(a.dialogs.length,1);
+ assert.equal(a.run('state.moduleImport.files[0].vhdl'),a.ctx.draft);assert.equal(a.run('state.moduleImport.error'),'');
+ const select=modal.querySelector('[data-import-file]');select.value='1';select.onchange();assert.equal(modal.querySelector('#viSource').value,box('leaf').vhdl);
+ select.value='0';select.onchange();assert.equal(modal.querySelector('#viSource').value,a.ctx.draft);
+ assert.equal(a.run('serialize()'),before);modal.onCancel();assert.equal(modal.removed,true);assert.equal(a.run('serialize()'),before);
+});
+test('closing a popup while files are reading rejects late results and project changes close its dialog',async()=>{
+ const a=picker(),before=a.run('serialize()');let input=a.open();input.files=selected([box('root','u:entity work.leaf port map(a,y);')]);await input.onchange();
+ const modal=a.dialogs[0];let release;input=a.open();input.files=[{name:'leaf.vhd',text:()=>new Promise(resolve=>{release=resolve;})}];
+ const reading=input.onchange();modal.onCancel();release(box('leaf').vhdl);await reading;assert.equal(a.run('serialize()'),before);assert.equal(modal.removed,true);
+ input=a.open();input.files=selected([box('a'),box('b')]);await input.onchange();const second=a.dialogs[1];
+ a.run('state.project=blankProject();renderPalette()');assert.equal(a.run('state.moduleImport'),null);assert.equal(second.removed,true);
+});
+test('removing a queued file preserves the chosen modules as file indexes shift',async()=>{
+ const a=picker(),input=a.open();input.files=selected([box('first'),box('second'),box('third')]);await input.onchange();
+ a.run('state.moduleImport.selected=new Set(["2:third"]);state.moduleImport.sourceIndex=1;');
+ a.dialogs[0].querySelector('[data-import-remove]').onclick();
+ assert.deepEqual(a.json('[...state.moduleImport.selected]'),['1:third']);assert.equal(a.run('Object.keys(state.project.customs).length'),0);
+ a.dialogs[0].querySelector('[data-import-go]').onclick();assert.deepEqual(a.json('Object.keys(state.project.customs)'),['third']);
 });

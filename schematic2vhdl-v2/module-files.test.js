@@ -22,7 +22,8 @@ for(const category of packs)for(const cc of Object.values(read('packs/'+category
  assert.deepEqual(a.json('parseVhdlModuleFile({fileName,vhdl}).ports'),cc.ports);
  assert.equal(a.run('applyCustomPackages([payload])'),1);
  assert.deepEqual(a.json('Object.keys(state.project.customs)'),[cc.name]);
- assert.equal(a.json('paletteEntries().filter(e=>e.category==="reuse"&&e.type.startsWith("CUSTOM:"))').length,1);
+ assert.equal(a.json('explorerItems().filter(e=>e.kind==="custom")').length,1);
+ a.run('renderPalette()');assert.doesNotMatch(a.els.get('#palettePane').innerHTML,/นำเข้าล่าสุด|REUSABLE CIRCUITS|data-pal="(?:CUSTOM:|SCH:)/);
  const imported=a.run('serialize()');a.run('undo()');assert.equal(a.run('serialize()'),before);a.run('redo()');assert.equal(a.run('serialize()'),imported);
 });
 test('category packs import together atomically; duplicates and invalid later files preserve prior project/history',()=>{
@@ -44,7 +45,7 @@ test('embedded boxes reopen with their source and settings, and custom exports r
  assert.equal(a.run('getPort(comp(id),"q").width'),64);
  assert.equal(a.run('comp(button).params.generic_STABLE_CYCLES'),750000);
  assert.match(a.run('componentParamFields(comp(button))'),/ตั้งระยะนิ่ง \(ms\)/);
- assert.equal(a.run('paletteEntries().filter(e=>e.type.startsWith("CUSTOM:")).length'),8);
+ assert.equal(a.run('explorerItems().filter(e=>e.kind==="custom").length'),8);
  a.ctx.document.createElement=()=>({click(){}});
  let blob;a.ctx.URL={createObjectURL:b=>{blob=b;return 'blob:test';},revokeObjectURL(){}};
  a.run('exportCustomComponent("ss_input_debounce")');

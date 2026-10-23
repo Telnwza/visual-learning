@@ -98,7 +98,7 @@ test('choice state supports root defaults, no selection, added dependencies, and
  a.run('state.moduleImport={project:state.project,files,reading:false};finishVhdlModuleImport(state.moduleImport);');
  assert.equal(a.run('state.moduleImport.choose'),true);assert.deepEqual(a.json('[...state.moduleImport.selected]'),['0:bundle_root','0:spare']);
  a.run('state.moduleImport.mode="single";state.moduleImport.root="0:bundle_root";finishVhdlModuleImport(state.moduleImport,true);');
- assert.deepEqual(a.json('state.paletteRecent.names'),['bundle_root']);assert.equal(a.run('state.history.idx'),idx+1);
+ assert.deepEqual(a.json('explorerItems().filter(e=>e.kind==="custom").map(e=>e.name)'),['bundle_root']);assert.equal(a.run('state.history.idx'),idx+1);
  a.run('undo();state.moduleImport={project:state.project,files,selected:new Set(),reading:false};finishVhdlModuleImport(state.moduleImport,true);');
  assert.match(a.run('state.moduleImport.error'),/เลือกโมดูล/);assert.equal(a.run('serialize()'),before);
  a.run('cancelVhdlModuleImport()');assert.equal(a.run('serialize()'),before);
