@@ -7498,17 +7498,20 @@ function parseConstEntry(raw, base, width){
 }
 function constEntryText(value,base){return base==="decimal"?value.decimal:base==="binary"?value.binary:value.hex;}
 const constEntryBases=new WeakMap();
-function constEntryFields(c){
+function constEntryFields(c,multiple=[]){
   const base=constEntryBases.get(c)||"hex", value=parseConstEntry(constHex(c.params),"hex",constWidth(c.params));
+  const mixed=multiple.some(n=>componentParamValue(n,'value')!==componentParamValue(c,'value'));
   return `<div class="row"><label>ฐานค่า CONST</label><select data-const-base aria-label="ฐานค่า CONST">
     ${[["hex","Hex"],["decimal","Decimal"],["binary","Binary"]].map(([id,label])=>`<option value="${id}" ${base===id?"selected":""}>${label}</option>`).join("")}</select></div>
-    <div class="row"><label>ค่า CONST</label><input data-const-value aria-label="ค่า CONST" value="${esc(constEntryText(value,base))}" spellcheck="false"></div>
+    <div class="row"><label>ค่า CONST</label><input data-const-value aria-label="ค่า CONST" value="${mixed?'':esc(constEntryText(value,base))}" ${mixed?'data-mixed="true" placeholder="หลายค่า"':''} spellcheck="false"></div>
     <div class="param-feedback" data-const-feedback role="status"></div>`;
 }
 function bindConstEntry(root,c,commit,onFeedback=()=>{}){
   const input=root.querySelector('[data-const-value]'),select=root.querySelector('[data-const-base]'),out=root.querySelector('[data-const-feedback]');
-  let base=select.value;
+  let base=select.value,mixed=input.dataset?.mixed==='true';
   const read=()=>{
+    if(mixed&&!input.value.trim()){out.textContent='';out.classList.remove('invalid');return null;}
+    mixed=false;
     try{
       const value=parseConstEntry(input.value,base,constWidth(c.params));
       out.classList.toggle("invalid",value.overflow);
@@ -7521,6 +7524,7 @@ function bindConstEntry(root,c,commit,onFeedback=()=>{}){
   input.addEventListener('change',apply);
   input.addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();ev.stopPropagation();apply();}if(ev.key==='Escape'){ev.preventDefault();ev.stopPropagation();state.pendingParamChange=null;if(state.componentPlacement)cancelComponentPlacement();else renderInspector();}});
   select.addEventListener("change",()=>{
+    if(mixed&&!input.value.trim()){base=select.value;constEntryBases.set(c,base);read();onFeedback();return;}
     try{const value=parseConstEntry(input.value,base,constWidth(c.params));base=select.value;constEntryBases.set(c,base);input.value=constEntryText(value,base);}
     catch(error){select.value=base;}
     read();onFeedback();
@@ -7548,7 +7552,10 @@ function busTapRangeWidth(c){
 }
 function bindBusTapRange(root,c,commit,onFeedback=()=>{}){
   const input=root.querySelector('[data-tap-range]'),out=root.querySelector('[data-tap-feedback]');
+  let mixed=input.dataset?.mixed==='true';
   const read=()=>{
+    if(mixed&&!input.value.trim()){out.textContent='';out.classList.remove('invalid');return null;}
+    mixed=false;
     try{const range=parseBusTapRange(input.value,busTapRangeWidth(c));out.classList.remove("invalid");out.textContent=busTapMapping({...c.params,...range});return range;}
     catch(error){out.classList.add("invalid");out.textContent=error.message;return null;}
   };
@@ -7585,27 +7592,39 @@ function bindDebounceTiming(root,c,commit){
   });
   update();return {update};
 }
-function componentParamFields(c){
+function componentParamValue(c,key){
+  const td=typeDef(c);
+  if(key==='range')return {bit:c.params.bit??0,nbit:c.params.nbit??1};
+  if(key==='value'&&c.type==='CONST')return BigInt('0x'+constHex(c.params)).toString(16);
+  if(key.startsWith('generic_')&&td._custom?.moduleKind==='vhdl')return vhdlGenericValues(td._custom,c.params||{})[key.slice(8).toLowerCase()];
+  if(key==='pinMode'&&['COMP','COMPM'].includes(c.type))return cmpIsBus(c.params||{})?'bus':'pins';
+  return c.params?.[key]??td.defaultParams?.[key];
+}
+function componentParamFields(c,multiple=[]){
   const td=typeDef(c);let html="";
-  if(c.type==="BUSTAP") html+=`<div class="row"><label>ช่วงบิต high:low</label><input data-tap-range aria-label="ช่วงบิต high:low" value="${(c.params.bit??0)+(c.params.nbit??1)-1}:${c.params.bit??0}"></div><div class="param-feedback" data-tap-feedback role="status"></div>`;
+  const differs=key=>multiple.some(n=>JSON.stringify(componentParamValue(n,key))!==JSON.stringify(componentParamValue(c,key)));
+  if(c.type==="BUSTAP") html+=`<div class="row"><label>ช่วงบิต high:low</label><input data-tap-range aria-label="ช่วงบิต high:low" value="${differs('range')?'':(c.params.bit??0)+(c.params.nbit??1)-1+':'+(c.params.bit??0)}" ${differs('range')?'data-mixed="true" placeholder="หลายค่า"':''}></div><div class="param-feedback" data-tap-feedback role="status"></div>`;
   for(const f of td.paramSchema||[]){
-    if(c.type==="CONST" && f.key==="value"){html+=constEntryFields(c);continue;}
+    if(multiple.length&&f.key==='name')continue;
+    if(c.type==="CONST" && f.key==="value"){html+=constEntryFields(c,multiple);continue;}
     const v=f.key.startsWith('generic_') && td._custom?.moduleKind==='vhdl' ? vhdlGenericValues(td._custom,c.params||{})[f.key.slice(8).toLowerCase()] : f.key==="pinMode" && ["COMP","COMPM"].includes(c.type) ? (cmpIsBus(c.params||{})?"bus":"pins") : (c.params?.[f.key]??td.defaultParams?.[f.key]);
+    const mixed=differs(f.key);
     const label=esc(f.key==='width'?'WIDTH (bit)':f.label+(["inputs","outputs"].includes(f.key)?(["MUX","DEMUX","ENC","DEC"].includes(c.type)?" (จำนวนช่อง)":" (จำนวนขา)"):""));
-    if(f.type==="string") html+=`<div class="row"><label>${label}</label><input aria-label="${label}" data-pk="${f.key}" value="${esc(v??"")}" placeholder="${esc(f.placeholder||"")}"></div>`;
+    if(f.type==="string") html+=`<div class="row"><label>${label}</label><input aria-label="${label}" data-pk="${f.key}" value="${mixed?'':esc(v??"")}" placeholder="${mixed?'หลายค่า':esc(f.placeholder||"")}"></div>`;
     else if(f.type==="int"){
       const bounds=f.key.startsWith('generic_') && td._custom?.moduleKind==='vhdl' ? vhdlGenericBounds(td._custom.generics.find(g=>'generic_'+g.name===f.key),vhdlGenericValues(td._custom,c.params||{})) : {min:f.min??1,max:f.max??64};
-      html+=`<div class="row"><label>${label}</label><input aria-label="${label}" type="number" data-pk="${f.key}" min="${bounds.min}" max="${bounds.max}" value="${v}"></div>`;
+      html+=`<div class="row"><label>${label}</label><input aria-label="${label}" type="number" data-pk="${f.key}" min="${bounds.min}" max="${bounds.max}" value="${mixed?'':v}" ${mixed?'placeholder="หลายค่า"':''}></div>`;
       if(f.presets) html+=`<div style="padding:0 12px 6px;display:flex;gap:4px">${f.presets.map(n=>`<button class="btn" data-width-preset="${n}" aria-label="${n} bit">${n} bit</button>`).join("")}</div>`;
-    }else if(f.type==="bool") html+=`<div class="row"><label>${label}</label><input aria-label="${label}" type="checkbox" data-pk="${f.key}" ${v?"checked":""}></div>`;
-    else if(f.type==="select") html+=`<div class="row"><label>${label}</label><select aria-label="${label}" data-pk="${f.key}">${f.options.map(o=>`<option value="${o}" ${o==v?"selected":""}>${esc(f.optionLabels?.[o]??o)}</option>`).join("")}</select></div>`;
+    }else if(f.type==="bool") html+=`<div class="row"><label>${label}${mixed?' <small>· หลายค่า</small>':''}</label><input aria-label="${label}" type="checkbox" data-pk="${f.key}" ${mixed?'data-mixed="true"':v?'checked':''}></div>`;
+    else if(f.type==="select") html+=`<div class="row"><label>${label}</label><select aria-label="${label}" data-pk="${f.key}">${mixed?'<option value="" selected disabled>หลายค่า</option>':''}${f.options.map(o=>`<option value="${o}" ${!mixed&&o==v?"selected":""}>${esc(f.optionLabels?.[o]??o)}</option>`).join("")}</select></div>`;
   }
-  if(['DEBOUNCE','BUTTON_INPUT'].includes(td._custom?.libraryId))html+=debounceTimingFields(c,td._custom);
+  if(!multiple.length&&['DEBOUNCE','BUTTON_INPUT'].includes(td._custom?.libraryId))html+=debounceTimingFields(c,td._custom);
   return html;
 }
 function bindComponentParamFields(root,c,commit){
   const td=typeDef(c),schema=td.paramSchema||[];
   root.querySelectorAll('[data-pk]').forEach(input=>{
+    if(input.dataset.mixed==='true')input.indeterminate=true;
     const key=input.dataset.pk,f=schema.find(f=>f.key===key);
     const out=document.createElement('div');out.className='param-feedback invalid';out.setAttribute('role','alert');input.closest('.row').after(out);
     const read=()=>{
@@ -7708,7 +7727,56 @@ function applyComponentParamChange(sch, c, change){
   snapshot(); render(); renderInspector();
   return true;
 }
-function componentParamImpactHtml(sch,c,change){
+function selectedParamComponents(sch=activeSch()){
+  const components=[...state.selection].map(id=>comp(id,sch)).filter(c=>c&&c.type!=='JUNCTION');
+  return components.length>1&&components.every(c=>c.type===components[0].type)?components:[];
+}
+function planComponentBatchParamChange(sch,components,key,value){
+  if(components.length<2||components.some(c=>c.type!==components[0].type||comp(c.id,sch)!==c))throw new Error('เลือกอุปกรณ์ชนิดเดียวกันอย่างน้อยสองตัว');
+  const schema=typeDef(components[0]).paramSchema||[];
+  if(key==='name'||!(schema.some(f=>f.key===key)||key==='range'&&components[0].type==='BUSTAP'))throw new Error('ตั้งค่านี้พร้อมกันไม่ได้');
+  const revision=componentEditRevision(),entries=[];
+  for(const c of components){
+    try{
+      const change=planComponentParamChange(sch,c,key,value);
+      if(c.type==='BUSTAP')parseBusTapRange(`${change.params.bit+change.params.nbit-1}:${change.params.bit}`,busTapRangeWidth(c));
+      if(JSON.stringify(componentParamValue(c,key))!==JSON.stringify(componentParamValue({...c,params:change.params},key)))entries.push({c,change});
+    }catch(error){throw new Error((c.label||c.params.name||c.id)+' · '+error.message);}
+  }
+  const wireChanges=new Map();
+  if(components[0].type==='BUSTAP'&&key==='mode'){
+    const preview=cloneData(sch);
+    for(const {c,change} of entries)comp(c.id,preview).params=cloneData(change.params);
+    for(const {c} of entries){
+      const tap=comp(c.id,preview);tap.params.mode=c.params.mode;
+      if(!setBusTapMode(preview,tap,value))throw new Error((c.label||c.id)+' · ขา y จะชนกับขาทิศเดียวกัน');
+    }
+    for(const wire of preview.wires)if(JSON.stringify(wire)!==JSON.stringify(sch.wires.find(w=>w.id===wire.id)))wireChanges.set(wire.id,wire);
+  }
+  return {project:state.project,sch,components,revision,key,value,entries,wireChanges};
+}
+function requestComponentBatchParamChange(sch,components,key,value){
+  const batch=planComponentBatchParamChange(sch,components,key,value);
+  state.pendingParamChange=null;
+  if(!batch.entries.length){renderInspector();return false;}
+  if(batch.entries.some(({change})=>paramChangeNeedsConfirmation(change))){state.pendingParamChange=batch;renderInspector();return false;}
+  return applyComponentBatchParamChange(batch);
+}
+function applyComponentBatchParamChange(batch){
+  const selected=selectedParamComponents(batch.sch);
+  if(batch.project!==state.project||activeSch()!==batch.sch||batch.revision!==componentEditRevision()||selected.length!==batch.components.length||batch.components.some(c=>comp(c.id,batch.sch)!==c||!selected.includes(c)))
+    throw new Error('วงจรหรือรายการที่เลือกเปลี่ยนไป — ตรวจค่าใหม่ก่อน Apply');
+  const fresh=planComponentBatchParamChange(batch.sch,batch.components,batch.key,batch.value);
+  if(!fresh.entries.length)return false;
+  const removed=new Set(fresh.entries.flatMap(({change})=>change.removedWires.map(w=>w.id)));
+  for(const {c,change} of fresh.entries){
+    for(const w of batch.sch.wires)for(const ep of [w.from,w.to])if(ep.cid===c.id&&change.remap[ep.pid])ep.pid=change.remap[ep.pid];
+    c.params=change.params;
+  }
+  batch.sch.wires=batch.sch.wires.filter(w=>!removed.has(w.id)).map(w=>fresh.wireChanges.get(w.id)||w);
+  state.pendingParamChange=null;snapshot();render();renderInspector();return true;
+}
+function componentParamImpactHtml(sch,c,change,actions=true){
   const td=typeDef(c),field=td.paramSchema.find(f=>f.key===change.key);
   const display=v=>change.key==='range'&&v?`${v.bit+v.nbit-1}:${v.bit}`:typeof v==='boolean'?(v?'เปิด':'ปิด'):String(v);
   const endpoint=(ep,sheet=sch)=>{const n=comp(ep.cid,sheet);return `${n?(n.label||n.params?.name||typeDef(n)?.label||n.type):ep.cid}.${ep.pid}`;};
@@ -7722,14 +7790,35 @@ function componentParamImpactHtml(sch,c,change){
       ${change.truncated?`<p>ค่าคงที่จะถูกตัด: 0x${esc(constHex(c.params))} → 0x${esc(change.params.value)}</p>`:""}
       ${c.type==="BUSTAP"?`<p>${esc(busTapMapping(c.params))}<br>→ ${esc(busTapMapping(change.params))}</p>`:""}
 
-    <div data-param-error role="alert"></div><button class="btn btn-primary" data-param-apply>Apply</button> <button class="btn" data-param-cancel>ยกเลิก</button></section>`;
+    ${actions?'<div data-param-error role="alert"></div><button class="btn btn-primary" data-param-apply>Apply</button> <button class="btn" data-param-cancel>ยกเลิก</button>':''}</section>`;
 }
 function bindPendingParamChange(root,pending){
   root.querySelector('[data-param-cancel]').onclick=()=>{state.pendingParamChange=null;renderInspector();};
   root.querySelector('[data-param-apply]').onclick=()=>{
-    try{applyComponentParamChange(pending.sch,pending.c,pending.change);}
+    try{if(pending.entries)applyComponentBatchParamChange(pending);else applyComponentParamChange(pending.sch,pending.c,pending.change);}
     catch(error){root.querySelector('[data-param-error]').textContent=error.message;root.querySelector('[data-param-apply]').disabled=true;}
   };
+}
+function renderComponentBatchInspector(root,sch,components){
+  const first=components[0],td=typeDef(first),pending=state.pendingParamChange;
+  const drafts=components.map(c=>{const entry=pending?.entries?.find(e=>e.c===c);return entry?{...c,params:entry.change.params}:c;});
+  const gateTypes=compatibleGateTypes(first.type);
+  root.innerHTML=`<div class="insp"><h3>${esc(td.label)} × ${components.length}</h3>
+    ${gateTypes.length?`<div class="row"><label>Gate type</label><select id="iGateType">${gateTypes.map(type=>`<option value="${type}" ${type===first.type?'selected':''}>${esc(TYPES[type].label)}</option>`).join('')}</select></div>`:''}
+    ${componentParamFields(drafts[0],drafts)}
+    ${pending?.entries?pending.entries.filter(e=>paramChangeNeedsConfirmation(e.change)).map(({c,change})=>componentParamImpactHtml(sch,{...c,label:c.label||c.params.name||c.id},change,false)).join('')+'<div data-param-error role="alert"></div><button class="btn btn-primary" data-param-apply>Apply</button> <button class="btn" data-param-cancel>ยกเลิก</button>':''}
+    <div style="padding:8px 0"><button class="btn" data-act="group-wire">⇥+ ต่อขาเป็นกลุ่ม</button>
+    ${state.selection.size===2?'<button class="btn" data-act="pair-wire">⇄ จับคู่พอร์ตสองกล่อง</button>':''}</div>
+    <div style="display:flex;gap:6px"><button class="btn" data-act="duplicate">⎘ Duplicate</button><button class="btn" data-act="delete-sel">🗑 Delete</button></div></div>`;
+  const commit=(key,value)=>requestComponentBatchParamChange(sch,components,key,value);
+  bindComponentParamFields(root,first,commit);
+  if(first.type==='CONST')bindConstEntry(root,first,commit);
+  if(first.type==='BUSTAP')bindBusTapRange(root,first,commit);
+  if(pending?.entries)bindPendingParamChange(root,pending);
+  root.querySelector('#iGateType')?.addEventListener('change',ev=>{
+    if(ev.target.value===first.type||!gateTypes.includes(ev.target.value))return;
+    components.forEach(c=>c.type=ev.target.value);state.pendingParamChange=null;snapshot();render();renderInspector();
+  });
 }
 
 function drawingLayoutRevision(sch){return JSON.stringify({locked:!!sch.locked,components:sch.components.map(c=>({id:c.id,type:c.type,x:c.x,y:c.y,rot:c.rot,mirror:c.mirror,params:c.params})),wires:sch.wires});}
@@ -7895,8 +7984,10 @@ function renderInspectorContents(){
     if(pair.project!==state.project||pair.sch!==sch||state.selection.size!==2||![pair.fromId,pair.toId].every(id=>state.selection.has(id)&&comp(id,sch)))state.pairWire=null;
     else{renderPairPortConnections(root,pair);return;}
   }
-  const edit=state.pendingParamChange;
-  if(edit&&(edit.project!==state.project||edit.sch!==sch||state.selection.size!==1||!state.selection.has(edit.c.id)||comp(edit.c.id,sch)!==edit.c))state.pendingParamChange=null;
+  const selectedComponents=selectedParamComponents(sch),edit=state.pendingParamChange;
+  if(edit&&(edit.project!==state.project||edit.sch!==sch||(edit.entries?
+    selectedComponents.length!==edit.components.length||edit.components.some(c=>!selectedComponents.includes(c)):
+    state.selection.size!==1||!state.selection.has(edit.c.id)||comp(edit.c.id,sch)!==edit.c)))state.pendingParamChange=null;
   const pending=state.pendingDelete;
   if(pending && (pending.sch!==sch || pending.ids.length!==state.selection.size || pending.ids.some(id=>!state.selection.has(id))))state.pendingDelete=null;
   if(state.pendingDelete){
@@ -8064,6 +8155,7 @@ function renderInspectorContents(){
       return;
     }
   }
+  if(selectedComponents.length){renderComponentBatchInspector(root,sch,selectedComponents);return;}
   root.innerHTML = `<div class="insp"><div class="empty">${state.selection.size} items selected</div>
     <div style="padding:0 12px 8px"><button class="btn" data-act="group-wire">⇥+ ต่อขาเป็นกลุ่ม</button></div>
     ${state.selection.size===2&&[...state.selection].every(id=>{const c=comp(id,sch);return c&&c.type!=='JUNCTION';})?'<div style="padding:0 12px 8px"><button class="btn" data-act="pair-wire">⇄ จับคู่พอร์ตสองกล่อง</button></div>':''}
