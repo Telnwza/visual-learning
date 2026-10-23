@@ -375,6 +375,27 @@ body.sidebar-resizing,body.sidebar-resizing *{cursor:col-resize!important;user-s
 .modal-body{padding:16px 18px;overflow:auto;flex:1}
 .modal-foot{padding:12px 18px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
 .modal .row[hidden]{display:none}
+.modal.logic-mux{width:880px}
+.logic-mux .logic-fields{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:14px}
+.logic-mux label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--ink-dim);flex:1;min-width:150px}
+.logic-mux input,.logic-mux select{min-width:0;width:100%}
+.logic-mux .logic-tabs{display:flex;gap:6px;margin-bottom:12px}
+.logic-mux .logic-tabs [aria-selected="true"]{background:var(--accent);color:white}
+.logic-mux [hidden]{display:none!important}
+.logic-mux [role="tabpanel"]{height:38vh}
+.logic-mux .logic-table{height:100%;overflow:auto;border:1px solid var(--line);border-radius:6px}
+.logic-mux textarea{height:calc(100% - 28px);min-height:0;resize:none}
+.logic-mux table{border-collapse:collapse;width:100%;text-align:center;font-family:monospace}
+.logic-mux th{position:sticky;top:0;background:var(--bg-2);padding:8px;z-index:1}
+.logic-mux td{padding:3px 8px;border-top:1px solid var(--line)}
+.logic-mux td.logic-input{color:var(--muted)}
+.logic-mux .logic-bit{min-width:38px;min-height:30px;font-family:monospace}
+.logic-mux .logic-bit[aria-pressed="true"]{color:var(--accent);border-color:var(--accent);background:var(--bg-3)}
+.logic-mux .logic-settings{display:flex;align-items:end;flex-wrap:wrap;gap:14px;margin-top:14px}
+.logic-mux .logic-settings>label{flex:0 0 180px;min-width:0}
+.logic-mux .logic-mapping{font:12px monospace;color:var(--ink-dim);white-space:pre-wrap;overflow-wrap:anywhere;flex:1;min-width:200px}
+.logic-mux .logic-error{color:var(--err);white-space:pre-wrap;overflow-wrap:anywhere;margin-top:12px}
+.logic-mux .logic-syntax{font:12px monospace;color:var(--muted);margin:8px 0 0}
 .modal .row{display:grid;grid-template-columns:130px 1fr;gap:10px;align-items:center;margin-bottom:10px}
 .split-row{display:flex;align-items:center;gap:9px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:13px}
 .split-row:hover{background:var(--bg-3)}
@@ -471,6 +492,8 @@ body.sidebar-resizing,body.sidebar-resizing *{cursor:col-resize!important;user-s
         </div></div>
       <div class="mi"><button data-menu="tools">Tools</button>
         <div class="dd">
+          <button data-act="logic-mux">Truth Table / Equation → Circuit…</button>
+          <hr>
           <button data-act="import-sch-text">↓ Import Schematic Text…</button>
           <button data-act="sch-text-catalog">Copy Circuit Info for AI…</button>
           <button data-act="import-vhdl">↓ Import VHDL as Schematic…</button>
@@ -9892,7 +9915,10 @@ function compileSchematicText(text){
 }
 function importSchematicText(text){
   if(state.placementMode) throw new Error('กด Accept หรือ Cancel ของ Placement Mode ก่อน');
-  const result=compileSchematicText(text),sch=result.sch;
+  return addCompiledSchematic(compileSchematicText(text));
+}
+function addCompiledSchematic(result){
+  const sch=result.sch;
   sch.id=uid('sch');sch.name=uniqueSchName(sch.name,sch.id);
   const ids=new Map(sch.components.map(c=>[c.id,uid('c')]));
   sch.components.forEach(c=>c.id=ids.get(c.id));
@@ -9901,6 +9927,340 @@ function importSchematicText(text){
   state.project.schematics[sch.id]=sch;
   openSchTab(sch.id);snapshot();renderAll();zoomFit();
   return {...result,sch};
+}
+
+/* Boolean tables use the leftmost input as the most significant row bit. */
+function logicRowBit(row,index,count){return (row>>(count-1-index))&1;}
+function logicSignalNames(text,label,max){
+  const names=String(text).trim().split(/[\s,]+/).filter(Boolean);
+  if(!names.length||names.length>max)throw new Error(`${label}: ใส่ชื่อ 1–${max} ชื่อ`);
+  const seen=new Set();
+  for(const name of names){
+    vhdlBasicName(name);
+    if(name.length>32)throw new Error('ชื่อยาวเกิน 32 ตัวอักษร: '+name);
+    if(seen.has(name.toLowerCase()))throw new Error('ชื่อซ้ำ: '+name);
+    seen.add(name.toLowerCase());
+  }
+  return names;
+}
+function makeLogicTable(inputText,outputText,previous){
+  const inputs=logicSignalNames(inputText,'Inputs',6),outputs=logicSignalNames(outputText,'Outputs',8);
+  if(inputs.some(n=>outputs.some(o=>o.toLowerCase()===n.toLowerCase())))throw new Error('ชื่อ Input และ Output ต้องไม่ซ้ำกัน');
+  // Keep assignments on rename, and preserve named columns when adding/removing ports.
+  const match=(old,next)=>{
+    const indices=next.map(n=>old.findIndex(o=>o.toLowerCase()===n.toLowerCase())),used=new Set(indices.filter(i=>i>=0));
+    return indices.map((v,i)=>{if(v>=0)return v;if(i<old.length&&!used.has(i)){used.add(i);return i;}return -1;});
+  };
+  const im=match(previous?.inputs||[],inputs),om=match(previous?.outputs||[],outputs);
+  const rows=Array.from({length:2**inputs.length},(_,row)=>{
+    let oldRow=0;
+    im.forEach((old,i)=>{if(old>=0)oldRow|=logicRowBit(row,i,inputs.length)<<(previous.inputs.length-1-old);});
+    return outputs.map((_,i)=>previous?.rows[oldRow]?.[om[i]]??0);
+  });
+  return {inputs,outputs,rows};
+}
+function validateLogicTable(table){
+  const model=makeLogicTable(table.inputs.join(','),table.outputs.join(','));
+  if(table.rows.length!==model.rows.length||table.rows.some(row=>!Array.isArray(row)||row.length!==model.outputs.length||row.some(v=>v!==0&&v!==1)))
+    throw new Error('ตารางต้องมีค่า 0 หรือ 1 ครบทุกแถว');
+  return table;
+}
+function parseLogicExpression(source,inputs){
+  const tokens=source.match(/[A-Za-z][A-Za-z0-9_]*|[01]|[!~&|^+*()']|\S/g)||[];
+  if(tokens.length>2048)throw new Error('สมการซับซ้อนเกินขีดจำกัด');
+  let at=0,depth=0;
+  const op=()=>({and:'&',or:'|',xor:'^',not:'!'}[tokens[at]?.toLowerCase()]||tokens[at]);
+  const unary=()=>{
+    if(++depth>64)throw new Error('สมการซ้อนเกิน 64 ชั้น');
+    let node;
+    if(op()==='!'||op()==='~'){at++;node={op:'!',a:unary()};}
+    else if(op()==='('){at++;node=binary(0);if(op()!==')')throw new Error('ขาดวงเล็บ )');at++;}
+    else{
+      const token=tokens[at++];
+      if(token==='0'||token==='1')node={value:Number(token)};
+      else{
+        const index=inputs.findIndex(n=>n.toLowerCase()===token?.toLowerCase());
+        if(index<0)throw new Error(token?'ไม่รู้จัก Input หรือสัญลักษณ์: '+token:'สมการยังไม่ครบ');
+        node={input:index};
+      }
+    }
+    while(op()==="'"){node={op:'!',a:node};at++;}
+    depth--;return node;
+  };
+  const levels=[['|','+'],['^'],['&','*']];
+  const binary=level=>{
+    if(level===levels.length)return unary();
+    let node=binary(level+1);
+    while(levels[level].includes(op())){const operator=op();at++;node={op:operator,a:node,b:binary(level+1)};}
+    return node;
+  };
+  const tree=binary(0);
+  if(at!==tokens.length)throw new Error('สัญลักษณ์เกินในสมการ: '+tokens[at]);
+  return tree;
+}
+function evaluateLogicExpression(node,row,count){
+  if(node.value!==undefined)return node.value;
+  if(node.input!==undefined)return logicRowBit(row,node.input,count);
+  const a=evaluateLogicExpression(node.a,row,count);
+  if(node.op==='!')return 1-a;
+  const b=evaluateLogicExpression(node.b,row,count);
+  return node.op==='&'||node.op==='*'?a&b:node.op==='^'?a^b:a|b;
+}
+function parseLogicEquations(source,inputs,outputs){
+  if(source.length>250000)throw new Error('สมการยาวเกินขีดจำกัด');
+  const expressions=new Map(),lines=source.split(/[;\r\n]+/).map(s=>s.trim()).filter(Boolean);
+  for(const line of lines){
+    const assignment=/^([A-Za-z][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line);
+    const output=assignment?.[1]||(outputs.length===1&&!line.includes('=')?outputs[0]:null);
+    const index=outputs.findIndex(n=>n.toLowerCase()===output?.toLowerCase());
+    if(index<0)throw new Error('ใช้รูปแบบ Output = สมการ: '+line);
+    if(expressions.has(index))throw new Error('สมการ Output ซ้ำ: '+outputs[index]);
+    expressions.set(index,parseLogicExpression(assignment?assignment[2]:line,inputs));
+  }
+  for(let i=0;i<outputs.length;i++)if(!expressions.has(i))throw new Error('ยังไม่มีสมการของ '+outputs[i]);
+  return outputs.map((_,i)=>expressions.get(i));
+}
+function logicEquationsToTable(source,inputs,outputs){
+  const expressions=parseLogicEquations(source,inputs,outputs);
+  const table={inputs:[...inputs],outputs:[...outputs],rows:Array.from({length:2**inputs.length},(_,row)=>expressions.map(expr=>evaluateLogicExpression(expr,row,inputs.length)))};
+  return validateLogicTable(table);
+}
+function logicTableEquations(table){
+  return table.outputs.map((name,col)=>{
+    const ones=table.rows.flatMap((row,i)=>row[col]?[i]:[]);
+    let expression=ones.length===table.rows.length?'1':ones.length===0?'0':null;
+    for(let i=0;expression===null&&i<table.inputs.length;i++){
+      if(table.rows.every((r,row)=>r[col]===logicRowBit(row,i,table.inputs.length)))expression=table.inputs[i];
+      else if(table.rows.every((r,row)=>r[col]===1-logicRowBit(row,i,table.inputs.length)))expression='!'+table.inputs[i];
+    }
+    expression??=ones.map(row=>'('+table.inputs.map((n,i)=>(logicRowBit(row,i,table.inputs.length)?'':'!')+n).join(' & ')+')').join(' | ');
+    return name+' = '+expression;
+  }).join('\n');
+}
+function logicPartName(base,names){
+  let name=base,i=2;while(names.has(name.toLowerCase()))name=base+'_'+i++;
+  names.add(name.toLowerCase());return name;
+}
+function compileLogicCircuitText(table,name,parts,links){
+  const result=compileSchematicText(['format schematic-text 1','circuit '+name,'input '+table.inputs.join(', '),'output '+table.outputs.join(', '),...parts,...links].join('\n'));
+  result.sch.components.forEach(c=>c.label='');
+  verifyLogicCircuit(result.sch,table);return result;
+}
+function compileLogicMux(table,{name='logic_circuit'}={}){
+  validateLogicTable(table);vhdlBasicName(name);
+  const count=table.inputs.length,width=table.outputs.length,names=new Set([...table.inputs,...table.outputs].map(n=>n.toLowerCase()));
+  const muxId=logicPartName('lookup_mux',names),parts=[`part ${muxId} MUX inputs=${table.rows.length} width=${width} selectMode=pins`],links=[],constants=[],taps=[];
+  table.rows.forEach((row,index)=>{
+    const id=logicPartName('lookup_d'+index,names),word=row.reduce((value,bit)=>(value<<1)|bit,0);
+    constants.push(id);parts.push(`part ${id} CONST width=${width} value=${word.toString(16)}`);
+    links.push(`connect ${id}.o -> ${muxId}.d${index}`);
+  });
+  table.inputs.forEach((input,i)=>links.push(`connect ${input} -> ${muxId}.s${count-1-i}`));
+  table.outputs.forEach((output,i)=>{
+    if(width===1){links.push(`connect ${muxId}.y -> ${output}`);return;}
+    const id=logicPartName('lookup_bit'+(width-1-i),names);taps.push(id);
+    parts.push(`part ${id} BUSTAP bit=${width-1-i} nbit=1 mode=split`);
+    links.push(`connect ${muxId}.y -> ${id}.d`,`connect ${id}.y -> ${output}`);
+  });
+  const result=compileLogicCircuitText(table,name,parts,links),sch=result.sch,mux=comp(muxId,sch);
+  const sourceRight=66+Math.max(...[...constants,...table.inputs].map(id=>getSize(comp(id,sch)).w));
+  mux.x=sourceRight+66+(table.rows.length+count)*GRID;mux.y=66;
+  const route=(source,pin,lane)=>{
+    const w=sch.wires.find(w=>w.from.cid===source.id&&w.to.cid===muxId&&w.to.pid===pin),from=getPort(source,'o'),to=getPort(mux,pin);
+    const x=sourceRight+33+lane*GRID;w.pts=[{x,y:source.y+from.dy},{x,y:mux.y+to.dy}];
+  };
+  constants.forEach((id,i)=>{const c=comp(id,sch);c.x=66;c.y=mux.y+i*44;route(c,'d'+i,i);});
+  table.inputs.forEach((input,i)=>{
+    const c=comp(input,sch),select=count-1-i;c.x=66;c.y=mux.y+table.rows.length*44+44+select*66;
+    route(c,'s'+select,table.rows.length+select);
+  });
+  table.outputs.forEach((output,i)=>{
+    const c=comp(output,sch);c.x=mux.x+363;c.y=width===1?mux.y+getSize(mux).h/2-22:55+i*66;
+    if(width>1){const t=comp(taps[i],sch);t.x=mux.x+231;t.y=c.y+11;}
+  });
+  return result;
+}
+function logicSopProducts(node){
+  if(node.op==='|'||node.op==='+'){
+    const a=logicSopProducts(node.a),b=logicSopProducts(node.b);return a&&b?[...a,...b]:null;
+  }
+  const product=n=>{
+    if(n.value!==undefined)return n.value?[]:[0];
+    if(n.input!==undefined)return [n.input+1];
+    if(n.op==='!'&&n.a.input!==undefined)return [-n.a.input-1];
+    if(n.op==='!'&&n.a.value!==undefined)return n.a.value?[0]:[];
+    if(n.op==='&'||n.op==='*'){
+      const a=product(n.a),b=product(n.b);return a&&b?[...a,...b]:null;
+    }
+    return null;
+  };
+  const literals=product(node);return literals?[literals]:null;
+}
+function compileLogicSop(table,{name='logic_circuit',equations}={}){
+  validateLogicTable(table);vhdlBasicName(name);
+  const expressions=equations===undefined?null:parseLogicEquations(equations,table.inputs,table.outputs);
+  if(expressions&&table.rows.some((row,index)=>row.some((bit,col)=>bit!==evaluateLogicExpression(expressions[col],index,table.inputs.length))))
+    throw new Error('สมการไม่ตรงกับตาราง');
+  const names=new Set([...table.inputs,...table.outputs].map(n=>n.toLowerCase())),parts=[],links=[],literals=new Map(table.inputs.map((n,i)=>[i+1,n])),products=new Map(),constants=new Map();
+  let gateId=0;
+  const gate=(type,sources)=>{
+    if(sources.length===1)return sources[0];
+    if(sources.length>8)return gate(type,Array.from({length:Math.ceil(sources.length/8)},(_,i)=>gate(type,sources.slice(i*8,i*8+8))));
+    const id=logicPartName('sop_'+type.toLowerCase()+'_'+gateId++,names);
+    parts.push(`part ${id} ${type} inputs=${sources.length} width=1`);
+    sources.forEach((source,i)=>links.push(`connect ${source} -> ${id}.i${i}`));return id+'.o';
+  };
+  const constant=bit=>{
+    if(!constants.has(bit)){const id=logicPartName('sop_const'+bit,names);parts.push(`part ${id} CONST width=1 value=${bit}`);constants.set(bit,id+'.o');}
+    return constants.get(bit);
+  };
+  const literal=number=>{
+    if(!literals.has(number)){
+      const id=logicPartName('sop_not_'+(-number-1),names);parts.push(`part ${id} NOT width=1`);
+      links.push(`connect ${literals.get(-number)} -> ${id}.i0`);literals.set(number,id+'.o');
+    }
+    return literals.get(number);
+  };
+  table.outputs.forEach((output,col)=>{
+    const terms=(expressions&&logicSopProducts(expressions[col]))||table.rows.flatMap((row,index)=>row[col]?[table.inputs.map((_,i)=>(i+1)*(logicRowBit(index,i,table.inputs.length)?1:-1))]:[]);
+    const normalized=new Map();
+    for(const term of terms){
+      const unique=[...new Set(term)].sort((a,b)=>Math.abs(a)-Math.abs(b));
+      if(unique.includes(0)||unique.some(n=>unique.includes(-n)))continue;
+      normalized.set(unique.join(','),unique);
+    }
+    let source;
+    if(normalized.has('')||table.rows.every(row=>row[col]===1))source=constant(1);
+    else if(!normalized.size)source=constant(0);
+    else source=gate('OR',[...normalized].map(([key,term])=>{
+      if(!products.has(key))products.set(key,gate('AND',term.map(literal)));return products.get(key);
+    }));
+    links.push(`connect ${source} -> ${output}`);
+  });
+  return compileLogicCircuitText(table,name,parts,links);
+}
+function verifyLogicCircuit(sch,table){
+  const components=new Map(sch.components.map(c=>[c.id,c])),drivers=new Map();
+  for(const w of sch.wires){const ep=netDriverPort(sch,w);if(ep)drivers.set(w.to.cid+'.'+w.to.pid,ep.cid);}
+  const outputs=table.outputs.map(n=>sch.components.find(c=>c.type==='OUT'&&c.params.name.toLowerCase()===n.toLowerCase()));
+  for(let row=0;row<table.rows.length;row++){
+    const memo=new Map(),visiting=new Set();
+    const input=(c,pid)=>value(drivers.get(c.id+'.'+pid));
+    const value=id=>{
+      if(memo.has(id))return memo.get(id);
+      const c=components.get(id);if(!c||visiting.has(id))throw new Error('วงจรมีสายขาดหรืออ้างอิงวน');
+      visiting.add(id);let bit;
+      if(c.type==='IN'){const index=table.inputs.findIndex(n=>n.toLowerCase()===c.params.name.toLowerCase());if(index<0)throw new Error('ไม่พบ Input '+c.params.name);bit=logicRowBit(row,index,table.inputs.length);}
+      else if(c.type==='VCC'||c.type==='GND')bit=c.type==='VCC'?1:0;
+      else if(c.type==='CONST')bit=parseInt(constHex(c.params),16);
+      else if(c.type==='OUT')bit=input(c,'i');
+      else if(c.type==='BUSTAP')bit=(input(c,'d')>>c.params.bit)&((1<<c.params.nbit)-1);
+      else if(c.type==='NOT')bit=1-input(c,'i0');
+      else if(c.type==='AND'||c.type==='OR')bit=Array.from({length:c.params.inputs},(_,i)=>input(c,'i'+i)).reduce((a,b)=>c.type==='AND'?a&b:a|b);
+      else if(c.type==='MUX'){
+        let selected=0;for(let i=0;i<Math.log2(c.params.inputs);i++)selected|=input(c,'s'+i)<<i;
+        bit=input(c,'d'+selected);
+      }else throw new Error('ชนิดอุปกรณ์ไม่รองรับในการตรวจลอจิก: '+c.type);
+      visiting.delete(id);memo.set(id,bit);return bit;
+    };
+    outputs.forEach((c,col)=>{if(!c||value(c.id)!==table.rows[row][col])throw new Error(`วงจรไม่ตรงตาราง: แถว ${row}, ${table.outputs[col]}`);});
+  }
+}
+function createLogicCircuit(table,{mode='mux',...options}={}){
+  if(state.placementMode)throw new Error('กด Accept หรือ Cancel ของ Placement Mode ก่อน');
+  if(!['mux','sop'].includes(mode))throw new Error('เลือกรูปแบบวงจร MUX + CONST หรือ AND–OR (SOP)');
+  return addCompiledSchematic(mode==='mux'?compileLogicMux(table,options):compileLogicSop(table,options));
+}
+function openLogicMuxDialog(){
+  const project=state.project,m=document.createElement('div');m.className='modal-bg';
+  m.innerHTML=`<div class="modal logic-mux" role="dialog" aria-modal="true" aria-labelledby="logicTitle">
+    <h2 id="logicTitle">Truth Table / Equation → Circuit <button class="close" aria-label="ปิด">×</button></h2>
+    <div class="modal-body">
+      <div class="logic-fields">
+        <label>ชื่อ Schematic<input data-logic-name value="logic_circuit" spellcheck="false"></label>
+        <label>Inputs (1–6)<input data-logic-inputs value="A, B, C" spellcheck="false"></label>
+        <label>Outputs (1–8)<input data-logic-outputs value="F" spellcheck="false"></label>
+      </div>
+      <div class="logic-tabs" role="tablist" aria-label="กำหนดลอจิก">
+        <button class="btn" id="logicTableTab" role="tab" aria-controls="logicTablePanel" aria-selected="true" data-logic-tab="table">ตาราง</button>
+        <button class="btn" id="logicEquationTab" role="tab" aria-controls="logicEquationPanel" aria-selected="false" data-logic-tab="equation" tabindex="-1">สมการ</button>
+      </div>
+      <div id="logicTablePanel" role="tabpanel" aria-labelledby="logicTableTab"><div class="logic-table" data-logic-table></div></div>
+      <div id="logicEquationPanel" role="tabpanel" aria-labelledby="logicEquationTab" hidden>
+        <textarea data-logic-equation aria-label="สมการ Boolean" spellcheck="false" placeholder="F = (A & B) | (!A & C)"></textarea>
+        <p class="logic-syntax">NOT: ! ~ ' not · AND: &amp; * and · XOR: ^ xor · OR: | + or</p>
+      </div>
+      <div class="logic-settings">
+        <label>สร้างด้วย<select data-logic-mode><option value="mux">MUX + CONST</option><option value="sop">AND–OR (SOP)</option></select></label>
+        <div class="logic-mapping" data-logic-mapping></div>
+      </div>
+      <div class="logic-error" data-logic-error role="alert" hidden></div>
+    </div>
+    <div class="modal-foot"><button class="btn" data-logic-cancel>ยกเลิก</button><button class="btn btn-primary" data-logic-create>สร้าง Schematic</button></div>
+  </div>`;
+  document.body.appendChild(m);const q=s=>m.querySelector(s);
+  let model=makeLogicTable('A,B,C','F'),sourceMode='table',creating=false;
+  q('[data-logic-equation]').value=logicTableEquations(model);
+  const error=message=>{q('[data-logic-error]').textContent=message;q('[data-logic-error]').hidden=!message;q('[data-logic-create]').disabled=creating||!!message;};
+  const renderTable=()=>{
+    q('[data-logic-table]').innerHTML=`<table><thead><tr>${[...model.inputs,...model.outputs].map(n=>'<th scope="col">'+esc(n)+'</th>').join('')}</tr></thead><tbody>${model.rows.map((values,row)=>
+      '<tr>'+model.inputs.map((_,i)=>'<td class="logic-input">'+logicRowBit(row,i,model.inputs.length)+'</td>').join('')+values.map((v,col)=>`<td><button class="btn logic-bit" data-logic-row="${row}" data-logic-col="${col}" aria-label="${esc(model.outputs[col])}, ${row.toString(2).padStart(model.inputs.length,'0')}" aria-pressed="${!!v}">${v}</button></td>`).join('')+'</tr>').join('')}</tbody></table>`;
+  };
+  const renderBuildInfo=()=>{
+    const info=q('[data-logic-mapping]');info.hidden=q('[data-logic-mode]').value!=='mux';
+    info.textContent=`MUX ${model.rows.length}:1 · ${model.outputs.length} bit\n`+model.inputs.map((n,i)=>`s${model.inputs.length-1-i} = ${n}`).join(', ')+
+      (model.outputs.length>1?'\n'+model.outputs.map((n,i)=>`y[${model.outputs.length-1-i}] = ${n}`).join(', '):'');
+  };
+  const refresh=(applySchema=true)=>{
+    try{
+      vhdlBasicName(q('[data-logic-name]').value.trim());
+      const next=makeLogicTable(q('[data-logic-inputs]').value,q('[data-logic-outputs]').value,model);
+      if(!applySchema){
+        if(sourceMode==='equation')logicEquationsToTable(q('[data-logic-equation]').value,next.inputs,next.outputs);
+        error('');return true;
+      }
+      const changed=JSON.stringify([next.inputs,next.outputs])!==JSON.stringify([model.inputs,model.outputs]);
+      if(changed){
+        model=next;renderBuildInfo();renderTable();
+      }
+      if(sourceMode==='equation')model=logicEquationsToTable(q('[data-logic-equation]').value,model.inputs,model.outputs);
+      else q('[data-logic-equation]').value=logicTableEquations(model);
+      renderTable();error('');return true;
+    }catch(e){error(e.message);return false;}
+  };
+  const showTab=tab=>{
+    m.querySelectorAll('[data-logic-tab]').forEach(b=>{const active=b.dataset.logicTab===tab;b.setAttribute('aria-selected',String(active));b.tabIndex=active?0:-1;});
+    q('#logicTablePanel').hidden=tab!=='table';q('#logicEquationPanel').hidden=tab!=='equation';
+  };
+  m.querySelectorAll('[data-logic-tab]').forEach(b=>{
+    b.onclick=()=>showTab(b.dataset.logicTab);
+    b.onkeydown=e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const tab=e.key==='Home'?'table':e.key==='End'?'equation':b.dataset.logicTab==='table'?'equation':'table';showTab(tab);q(`[data-logic-tab="${tab}"]`).focus();}};
+  });
+  for(const selector of ['[data-logic-name]','[data-logic-inputs]','[data-logic-outputs]']){
+    q(selector).oninput=()=>refresh(false);q(selector).onblur=()=>refresh();
+  }
+  q('[data-logic-equation]').oninput=()=>{sourceMode='equation';refresh();};
+  q('[data-logic-table]').onclick=e=>{
+    const b=e.target.closest('[data-logic-row]');if(!b)return;
+    const row=Number(b.dataset.logicRow),col=Number(b.dataset.logicCol);model.rows[row][col]^=1;sourceMode='table';refresh();
+    q(`[data-logic-row="${row}"][data-logic-col="${col}"]`)?.focus();
+  };
+  q('[data-logic-mode]').onchange=renderBuildInfo;
+  q('.close').onclick=q('[data-logic-cancel]').onclick=()=>m.remove();
+  q('[data-logic-create]').onclick=async()=>{
+    if(creating||!refresh())return;
+    const table=cloneData(model),options={name:q('[data-logic-name]').value.trim(),mode:q('[data-logic-mode]').value,equations:sourceMode==='equation'?q('[data-logic-equation]').value:undefined},button=q('[data-logic-create]');
+    creating=true;button.disabled=true;button.textContent='กำลังสร้าง…';
+    try{
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+      if(!m.isConnected)return;
+      if(project!==state.project)throw new Error('โปรเจกต์เปลี่ยนแล้ว เปิดหน้าต่างสร้างวงจรใหม่');
+      const result=createLogicCircuit(table,options);
+      setLeftTab('project');m.remove();toast('สร้าง '+result.sch.name+' แล้ว','ok');
+    }catch(e){error(e.message);}
+    finally{creating=false;button.textContent='สร้าง Schematic';button.disabled=!!q('[data-logic-error]').textContent;}
+  };
+  renderTable();renderBuildInfo();q('[data-logic-inputs]').focus();
 }
 function schematicTextCatalog(types){
   const out=['Schematic Text v1. Use format schematic-text 1, circuit NAME, input/output name[width], part ID TYPE key=value, connect source -> target[, target].',
@@ -12214,6 +12574,7 @@ document.addEventListener("click",ev=>{
     case "cut": copySelection(); deleteSelection(); break;
     case "import-custom": importCustomComponent(); break;
     case "import-sch-text": openSchematicTextDialog(); break;
+    case "logic-mux": openLogicMuxDialog(); break;
     case "sch-text-catalog": openSchematicTextCatalog(); break;
     case "import-vhdl": importVhdlFile(); break;
     case "import-vhdl-module": showVhdlModuleImport(); break;
