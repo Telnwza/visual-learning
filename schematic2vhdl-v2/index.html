@@ -546,13 +546,13 @@ body.sidebar-resizing,body.sidebar-resizing *{cursor:col-resize!important;user-s
         <svg id="canvas" tabindex="0" aria-label="Schematic canvas" xmlns="http://www.w3.org/2000/svg"></svg>
         <div class="overlay">
           <div class="canvas-toolbar" id="canvasToolbar">
-            <button data-tool="select" class="active" title="เลือก / ย้าย (Esc / 1)">➤</button>
+            <button data-tool="select" class="active" title="เลือก / ย้าย (Esc)">➤</button>
             <hr>
-            <button data-tool="wire"     title="Add Wire (W / 2) — คลิกพอร์ต→พอร์ต ต่อสาย, คลิกกลางสาย = แยกสาย">╱</button>
+            <button data-tool="wire"     title="Add Wire (W) — คลิกพอร์ต→พอร์ต ต่อสาย, คลิกกลางสาย = แยกสาย">╱</button>
             <button data-tool="netname"  title="Add Net Name (N / 3) — คลิกสายเพื่อตั้งชื่อ · พิมพ์ data(7:0) เพื่อกำหนดบัส">ab</button>
             <button data-tool="iomarker" title="Add I/O Marker (I / 4) — คลิกขาที่ว่างเพื่อติด INPUT/OUTPUT">⇥</button>
-            <button data-tool="const0" aria-label="ต่อค่า 0" title="ต่อ CONST 0 (Alt+0) — คลิกหรือลากผ่านขา input">0</button>
-            <button data-tool="const1" aria-label="ต่อค่า 1" title="ต่อ CONST 1 (Alt+1) — คลิกหรือลากผ่านขา input">1</button>
+            <button data-tool="const0" aria-label="ต่อค่า 0" title="ต่อ CONST 0 (2) — คลิกหรือลากผ่านขา input">0</button>
+            <button data-tool="const1" aria-label="ต่อค่า 1" title="ต่อ CONST 1 (1) — คลิกหรือลากผ่านขา input">1</button>
             <button data-tool="bustap"   title="Bus Tap (B / 5) — ลากสายไว้ก่อน แล้วคลิกบนสายบัสตรงจุดที่สายมาเจอกัน">≣</button>
             <hr>
             <button data-tool="symbol"   title="Add Symbol (S / 6) — เปิดแผง Components">⊞</button>
@@ -3590,10 +3590,10 @@ const TOOL_INFO = {
   iomarker:{cur:"crosshair", msg:"Add I/O Marker — คลิกขาที่ยังว่างเพื่อติด INPUT/OUTPUT อัตโนมัติ",
     hint:"<b>คลิกขาที่ยังว่าง</b> เพื่อติด INPUT/OUTPUT marker อัตโนมัติ (บัสได้ด้วย)"},
 };
-// Number keys follow the toolbar from top to bottom; Numpad mirrors the same layout.
+// Plain number keys; Numpad mirrors the same shortcuts.
 const NUMBER_TOOL_SHORTCUTS = Object.freeze({
-  Digit1:"select",   Numpad1:"select",
-  Digit2:"wire",     Numpad2:"wire",
+  Digit1:"const1",   Numpad1:"const1",
+  Digit2:"const0",   Numpad2:"const0",
   Digit3:"netname",  Numpad3:"netname",
   Digit4:"iomarker", Numpad4:"iomarker",
   Digit5:"bustap",   Numpad5:"bustap",
@@ -3675,12 +3675,6 @@ function sweepPortHits(sch, from, to, tolerance){
   return hits;
 }
 function isQuickConstantTool(){return state.tool==='const0'||state.tool==='const1';}
-function quickConstantShortcut(ev){
-  if(!ev.altKey||ev.ctrlKey||ev.metaKey||ev.shiftKey)return null;
-  if(ev.code==='Digit0'||ev.code==='Numpad0')return 'const0';
-  if(ev.code==='Digit1'||ev.code==='Numpad1')return 'const1';
-  return null;
-}
 function quickConstantTargetStatus(sch,ep){
   const c=comp(ep.cid,sch),p=c&&getPort(c,ep.pid);
   if(!p||p.dir!=='in'||c.type==='JUNCTION'||c.type==='BUSTAP'&&p.id==='d')return {kind:'skip',reason:'เลือกขา input'};
@@ -7441,7 +7435,6 @@ window.addEventListener("keydown",ev=>{
     return;
   }
   const numberTool = !ctl && !ev.altKey && !ev.shiftKey ? NUMBER_TOOL_SHORTCUTS[code] : null;
-  const constantTool=quickConstantShortcut(ev);
   const pm=placementForActive();
   if(pm){
     if(ev.key==="Escape"){ cancelPlacement(); ev.preventDefault(); return; }
@@ -7450,7 +7443,7 @@ window.addEventListener("keydown",ev=>{
       ev.preventDefault(); return;
     }
     const blockedPlain=["KeyW","KeyN","KeyB","KeyI","KeyS","KeyR","KeyM","F7"].includes(code)
-      || ev.key==="Delete" || ev.key==="Backspace" || !!numberTool || !!constantTool;
+      || ev.key==="Delete" || ev.key==="Backspace" || !!numberTool;
     const blockedCtrl=ctl && ["KeyZ","KeyY","KeyD","KeyC","KeyV","KeyX","KeyS","KeyO","KeyN"].includes(code);
     if(blockedPlain || blockedCtrl){
       toast("Placement Mode ย้ายตำแหน่งเท่านั้น — Preview/Accept หรือ Cancel ก่อนแก้วงจร","info",2600);
@@ -7488,8 +7481,7 @@ window.addEventListener("keydown",ev=>{
       setTool("select", true);
       renderInspector();
     }
-  } else if(constantTool){setTool(constantTool);ev.preventDefault();}
-  else if(numberTool){ setTool(numberTool); ev.preventDefault(); }
+  } else if(numberTool){ setTool(numberTool); ev.preventDefault(); }
   else if(!ctl && (code==="KeyW" || k==="w")){ setTool("wire"); ev.preventDefault(); }
   else if(!ctl && (code==="KeyN" || k==="n")){ setTool("netname"); ev.preventDefault(); }
   else if(!ctl && (code==="KeyB" || k==="b")){ setTool("bustap"); ev.preventDefault(); }

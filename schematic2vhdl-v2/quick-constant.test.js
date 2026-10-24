@@ -95,13 +95,13 @@ test('quick constants survive Save/Open and remain ordinary editable CONST compo
  a.run(`const k=activeSch().components.find(c=>c.type==='CONST');requestComponentParamChange(activeSch(),k,'value','F');`);
  assert.equal(a.run('BigInt("0x"+k.params.value).toString()'),'15');
 });
-test('Alt+0/1 and numpad alternatives do not take over plain numbers or modified editor shortcuts',()=>{
+test('1 selects CONST 1 and 2 selects CONST 0, including numpad, while 3–8 keep their tools',()=>{
  const a=loadApp();
- for(const [code,tool] of [['Digit0','const0'],['Numpad0','const0'],['Digit1','const1'],['Numpad1','const1']]){
-  a.ctx.code=code;assert.equal(a.run('quickConstantShortcut({code,altKey:true})'),tool);
-  for(const extra of [{},{altKey:true,ctrlKey:true},{altKey:true,metaKey:true},{altKey:true,shiftKey:true}]){a.ctx.extra=extra;assert.equal(a.run('quickConstantShortcut({code,...extra})'),null);}
+ for(const [i,tool] of ['const1','const0','netname','iomarker','bustap','symbol','repeatwire','sweepwire'].entries()){
+  for(const prefix of ['Digit','Numpad'])assert.equal(a.run(`NUMBER_TOOL_SHORTCUTS.${prefix}${i+1}`),tool);
  }
- assert.equal(a.run('NUMBER_TOOL_SHORTCUTS.Digit1'),'select');
+ assert.equal(a.run('NUMBER_TOOL_SHORTCUTS.Digit0'),undefined);
+ assert.equal(a.run('NUMBER_TOOL_SHORTCUTS.Numpad0'),undefined);
 });
 test('generated VHDL drives numeric 0 and 1 for scalar, 7-bit and 64-bit inputs',t=>{
  try{execFileSync('ghdl',['--version']);}catch{t.skip('GHDL unavailable');return;}
