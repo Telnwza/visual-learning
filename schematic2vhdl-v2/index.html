@@ -1345,7 +1345,7 @@ function gatePortsAndSize(p, withBubble=false){
   const bits = gateWidth(p);
   const ins = [];
   for(let i=0;i<n;i++){
-    ins.push({id:"i"+i, dir:"in", dx:0, dy: Math.round(h/(n+1) * (i+1)), width:bits});
+    ins.push({id:"i"+i, dir:"in", dx:0, dy: Math.round(h/(n+1) * (i+1)), width:p.scalarLast && n>1 && i===n-1 ? 1 : bits});
   }
   const out = {id:"o", dir:"out", dx:w, dy: Math.round(h/2), width:bits};
   return { ports:[...ins,out], size:{w,h} };
@@ -1441,14 +1441,11 @@ function cmpDef(mag){
 function gateDef(kind, label, op, defaultIns=2){
   return {
     label, category:"gate",
-    /* WIDTH. A gate is one bit until you say otherwise, and then it is that many bits
-       wide on every pin — which is what lets a byte-wide mux be drawn as
-       (a and not sel) or (b and sel) instead of eight copies of it. VHDL defines
-       and/or/xor/not element-wise over std_logic_vector, so the emitted expression is
-       the same; only the widths change. */
-    defaultParams: kind==="not"||kind==="buf" ? {inputs:1, width:1} : {inputs:defaultIns, width:1},
+    // The optional scalar input is replicated across WIDTH by the VHDL generator.
+    defaultParams: kind==="not"||kind==="buf" ? {inputs:1, width:1} : {inputs:defaultIns, width:1, scalarLast:false},
     paramSchema: (kind==="not"||kind==="buf" ? [] : [{key:"inputs", label:"Inputs", type:"int", min:2, max:8}])
-      .concat([{key:"width", label:"ความกว้าง (bit)", type:"int", min:1, max:64}]),
+      .concat([{key:"width", label:"ความกว้าง (bit)", type:"int", min:1, max:64}])
+      .concat(kind==="not"||kind==="buf" ? [] : [{key:"scalarLast", label:"ขาสุดท้ายเป็น 1 bit", type:"bool"}]),
     size(p){ return gatePortsAndSize(p).size; },
     ports(p){ return gatePortsAndSize(p).ports; },
     shape(p){ return gateBodyShape(p, kind); },
@@ -3489,7 +3486,7 @@ function validatePlacementParams(type,params){
   const td=typeDef({type});if(!td) throw new Error("ไม่พบ component");
   for(const f of td.paramSchema||[]){
     if(f.key.startsWith('generic_') && td._custom?.moduleKind==='vhdl')continue;
-    const v=params[f.key];
+    const v=params[f.key]===undefined ? td.defaultParams?.[f.key] : params[f.key];
     if(f.type==="int" && (!Number.isInteger(v)||v<(f.min??1)||v>(f.max??64))) throw new Error(f.label+" อยู่นอกช่วง");
     if(f.type==="select" && !f.options.includes(v)) throw new Error(f.label+" ไม่ถูกต้อง");
     if(f.type==="bool" && typeof v!=="boolean") throw new Error(f.label+" ไม่ถูกต้อง");
