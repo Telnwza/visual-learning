@@ -551,6 +551,8 @@ body.sidebar-resizing,body.sidebar-resizing *{cursor:col-resize!important;user-s
             <button data-tool="wire"     title="Add Wire (W / 2) — คลิกพอร์ต→พอร์ต ต่อสาย, คลิกกลางสาย = แยกสาย">╱</button>
             <button data-tool="netname"  title="Add Net Name (N / 3) — คลิกสายเพื่อตั้งชื่อ · พิมพ์ data(7:0) เพื่อกำหนดบัส">ab</button>
             <button data-tool="iomarker" title="Add I/O Marker (I / 4) — คลิกขาที่ว่างเพื่อติด INPUT/OUTPUT">⇥</button>
+            <button data-tool="const0" aria-label="ต่อค่า 0" title="ต่อ CONST 0 (Alt+0) — คลิกหรือลากผ่านขา input">0</button>
+            <button data-tool="const1" aria-label="ต่อค่า 1" title="ต่อ CONST 1 (Alt+1) — คลิกหรือลากผ่านขา input">1</button>
             <button data-tool="bustap"   title="Bus Tap (B / 5) — ลากสายไว้ก่อน แล้วคลิกบนสายบัสตรงจุดที่สายมาเจอกัน">≣</button>
             <hr>
             <button data-tool="symbol"   title="Add Symbol (S / 6) — เปิดแผง Components">⊞</button>
@@ -2028,7 +2030,7 @@ for(const type of ["DEMUX","ENC","DEC"]){
 
 for(const td of Object.values(TYPES)){
   const field=td.paramSchema.find(f=>f.key==="width" && f.type==="int");
-  if(field) field.presets=[8,16,32,64];
+  if(field) field.presets=[2,4,7,8,16,32,64];
 }
 
 /* ---------- helpers for type system ---------- */
@@ -2603,6 +2605,7 @@ const state = {
   selection: new Set(),     // component or wire ids in active schematic
   pendingWire: null,        // {cid,pid,isOut,pts[]} while drawing, or {onWire} branch
   multiWire: null,          // transient source + sweep preview; never saved
+  constantSweep: null,
   wireDrag: null,           // {w, kind, m0, moved, shift} — rerouting a wire
   cornerDrag: null,         // {w, index} — dragging a waypoint corner of a poly wire
   wireAnchor: null,         // id of the wire segment actually clicked in a net selection
@@ -2858,6 +2861,7 @@ function restore(s){
   state.pendingWire = null;
   state.clipboard = null;
   state.multiWire = null;
+  state.constantSweep = null;
   $("#projectName").value = state.project.name;
   resetVhdlPanel(); renderAll();
 }
@@ -3328,6 +3332,7 @@ function openSchTab(id){
     toast("จบหรือยกเลิก Placement Mode ก่อนเปลี่ยน schematic","warn",2800); return;
   }
   state.activeVhdl=null;
+  state.constantSweep=null;
   state.activeId = id;
   if(!state.openTabs.includes(id)) state.openTabs.push(id);
   state.selection.clear();
@@ -3566,6 +3571,10 @@ function renderComponentPlacementInspector(root,p){
    The active tool stays armed for repeated use; Esc returns to Select.
    ========================================================================= */
 const TOOL_INFO = {
+  const0:{cur:"crosshair",msg:"ต่อค่า 0 — คลิกหรือลากผ่านขา input",
+    hint:"<b>CONST 0</b> · คลิกหรือลากผ่าน input · ขนาดตามขา · ข้ามขาที่มีสาย · <b>Esc</b> ออก"},
+  const1:{cur:"crosshair",msg:"ต่อค่า 1 — คลิกหรือลากผ่านขา input",
+    hint:"<b>CONST 1</b> · คลิกหรือลากผ่าน input · บัสใช้ค่าเลข 1 · ข้ามขาที่มีสาย · <b>Esc</b> ออก"},
   repeatwire:{cur:"crosshair",msg:"ต่อหลายขา — เลือก output/สาย แล้วคลิก input ทีละขา",
     hint:"<b>เลือก output หรือสายที่มี driver</b> → คลิก input ขนาดเดียวกันได้หลายขา · ขาที่มีสายเดิมจะถูกข้าม · <b>Enter / Esc / Finish</b> จบ"},
   sweepwire:{cur:"crosshair",msg:"ลากต่อหลายขา — เลือก output/สาย แล้วลากผ่านจุด input",
@@ -3601,6 +3610,7 @@ function setTool(t, silent){
   }
   if(t==="symbol"){ setLeftTab("palette"); toast("ลาก component จากแผง Components ไปวางบน canvas","info",2200); return; }
   if(!TOOL_INFO[t]) t = "select";
+  state.constantSweep=null;
   if(state.tool!==t) state.multiWire=null;
   state.tool = t;
   if(t!=="bustap"){state.tapPlacement=null;document.querySelector("#tapHover")?.remove();}
@@ -3663,6 +3673,97 @@ function sweepPortHits(sch, from, to, tolerance){
     }
   }
   return hits;
+}
+function isQuickConstantTool(){return state.tool==='const0'||state.tool==='const1';}
+function quickConstantShortcut(ev){
+  if(!ev.altKey||ev.ctrlKey||ev.metaKey||ev.shiftKey)return null;
+  if(ev.code==='Digit0'||ev.code==='Numpad0')return 'const0';
+  if(ev.code==='Digit1'||ev.code==='Numpad1')return 'const1';
+  return null;
+}
+function quickConstantTargetStatus(sch,ep){
+  const c=comp(ep.cid,sch),p=c&&getPort(c,ep.pid);
+  if(!p||p.dir!=='in'||c.type==='JUNCTION'||c.type==='BUSTAP'&&p.id==='d')return {kind:'skip',reason:'เลือกขา input'};
+  if(sch.wires.some(w=>[w.from,w.to].some(end=>end.cid===ep.cid&&end.pid===ep.pid)))return {kind:'skip',reason:'ขานี้มีสายอยู่แล้ว'};
+  return {kind:'accept',width:p.width||1};
+}
+function quickConstantPlacement(sch,ep,value){
+  const target=comp(ep.cid,sch),pin=getPort(target,ep.pid),at=portPos(target,ep.pid),bounds=orientedComponentBounds(target);
+  const horizontal=portSideH(target,ep.pid),normal=horizontal?{x:at.x<(bounds.minX+bounds.maxX)/2?-1:1,y:0}:{x:0,y:at.y<(bounds.minY+bounds.maxY)/2?-1:1};
+  const c={type:'CONST',label:'',params:{value:String(value),width:pin.width||1},rot:horizontal?(normal.x<0?0:180):(normal.y<0?90:270),x:0,y:0};
+  const output=orientLocal(c,getPort(c,'o').dx,getPort(c,'o').dy),size=orientedComponentBounds(c);
+  const depth=(horizontal?size.maxX-size.minX:size.maxY-size.minY)+22,spacing=(horizontal?size.maxY-size.minY:size.maxX-size.minX)+11;
+  for(let ring=0;ring<=12;ring++)for(const side of [0,...Array.from({length:ring},(_,i)=>[i+1,-i-1]).flat()]){
+    const distance=44+(ring-Math.abs(side))*depth;
+    c.x=snap(at.x+normal.x*distance-normal.y*side*spacing-output.x);
+    c.y=snap(at.y+normal.y*distance+normal.x*side*spacing-output.y);
+    const box=orientedComponentBounds(c);
+    const overlaps=sch.components.some(other=>{
+      if(other.type==='JUNCTION'||isDocumentationComponent(other))return false;
+      const b=orientedComponentBounds(other);
+      return box.minX<b.maxX+11&&box.maxX>b.minX-11&&box.minY<b.maxY+11&&box.maxY>b.minY-11;
+    });
+    const obstacle={x1:box.minX,y1:box.minY,x2:box.maxX,y2:box.maxY};
+    if(!overlaps&&!sch.wires.some(w=>routeCutsBody(sch,w,[obstacle])))return c;
+  }
+  return null;
+}
+function applyQuickConstants(targets,value,sch=activeSch()){
+  if(sch!==activeSch()||state.placementMode||state.activeVhdl||![0,1].includes(value))return 0;
+  const draft={...sch,components:[...sch.components],wires:[...sch.wires]},planned=[],seen=new Set();
+  for(const ep of targets){
+    const key=ep.cid+'.'+ep.pid;if(seen.has(key))continue;seen.add(key);
+    if(quickConstantTargetStatus(draft,ep).kind!=='accept')continue;
+    const c=quickConstantPlacement(draft,ep,value);if(!c)continue;
+    c.id='_quick_constant_'+draft.components.length;while(draft.components.some(n=>n.id===c.id))c.id+='_';
+    draft.components.push(c);
+    if(wireConnectionError(draft,{cid:c.id,pid:'o'},ep)){draft.components.pop();continue;}
+    const w={id:c.id+'_wire',from:{cid:c.id,pid:'o'},to:{cid:ep.cid,pid:ep.pid},name:''};
+    while(draft.wires.some(n=>n.id===w.id))w.id+='_';
+    draft.wires.push(w);planned.push({c,w});
+  }
+  if(!planned.length)return 0;
+  for(const {c,w} of planned){c.id=uid('c');w.id=uid('w');w.from.cid=c.id;sch.components.push(c);sch.wires.push(w);}
+  healLayout(sch,scopeOf(sch,{wires:planned.map(p=>p.w)}));
+  state.selection=new Set(planned.map(p=>p.c.id));snapshot();return planned.length;
+}
+function quickConstantSweepForActive(){
+  const sweep=state.constantSweep;
+  if(sweep&&(sweep.sch!==activeSch()||!isQuickConstantTool()||sweep.value!==Number(state.tool==='const1')||state.activeVhdl||state.placementMode))state.constantSweep=null;
+  return state.constantSweep;
+}
+function beginQuickConstantSweep(point){
+  if(!isQuickConstantTool()||state.placementMode||state.activeVhdl)return;
+  state.wireError=null;
+  state.constantSweep={sch:activeSch(),value:Number(state.tool==='const1'),last:{...point},targets:new Map()};
+  updateQuickConstantSweep(point);render();
+}
+function updateQuickConstantSweep(point){
+  const sweep=quickConstantSweepForActive();if(!sweep)return;
+  for(const ep of sweepPortHits(sweep.sch,sweep.last,point,7/state.view.k)){
+    const key=ep.cid+'.'+ep.pid;
+    if(!sweep.targets.has(key))sweep.targets.set(key,{...ep,...quickConstantTargetStatus(sweep.sch,ep)});
+  }
+  sweep.last={...point};
+}
+function cancelQuickConstantSweep(){if(state.constantSweep){state.constantSweep=null;render();}}
+function endQuickConstantSweep(){
+  const sweep=quickConstantSweepForActive();if(!sweep)return 0;
+  state.constantSweep=null;
+  const targets=[...sweep.targets.values()],count=applyQuickConstants(targets,sweep.value,sweep.sch);
+  if(!count&&targets.length){const first=targets[0];state.wireError={cid:first.cid,pid:first.pid,message:quickConstantTargetStatus(sweep.sch,first).reason||'ไม่มีที่วาง CONST ใกล้ขานี้'};}
+  render();if(count)renderInspector();return count;
+}
+function renderQuickConstantPreview(root){
+  const sweep=quickConstantSweepForActive();if(!sweep)return;
+  const k=state.view.k,g=el('g',{class:'multiwire-preview','data-constant-preview':''});
+  for(const ep of sweep.targets.values()){
+    const at=portPos(comp(ep.cid,sweep.sch),ep.pid);if(!at)continue;
+    const color=ep.kind==='accept'?'var(--ok)':'var(--err)';
+    g.appendChild(el('circle',{cx:at.x,cy:at.y,r:10/k,fill:'none',stroke:color,'stroke-width':2/k}));
+    g.appendChild(txt(at.x-16/k,at.y-10/k,String(sweep.value),{size:12/k,fill:color}));
+  }
+  root.appendChild(g);
 }
 function beginMultiWireSweep(point){
   const m=multiWireForActive(); if(!m || state.tool!=="sweepwire") return;
@@ -6506,6 +6607,7 @@ function render(){
       if(ev.button !== 0) return;
       ev.stopPropagation();
       if(state.spaceDown){ startPan(ev); return; }
+      if(isQuickConstantTool()){beginQuickConstantSweep(svgPoint(ev));return;}
       if(isMultiWireTool()){ multiWireNetPress(w,svgPoint(ev)); return; }
       // ISE modal tools act on wires directly
       if(state.tool==="netname"){ applyWireName(w, prompt("ตั้งชื่อสาย:", w.name||"")); return; }
@@ -6713,7 +6815,7 @@ function render(){
       }
     }
     body.addEventListener("mousedown",ev=>{
-      if(!isMultiWireTool() && handleComponentDoubleClick(ev,c)) return;
+      if(!isMultiWireTool() && !isQuickConstantTool() && handleComponentDoubleClick(ev,c)) return;
       startDrag(ev,c);
     });
     body.addEventListener("contextmenu",ev=>{
@@ -6756,6 +6858,7 @@ function render(){
         if(ev.button!==0) return;
         ev.stopPropagation();
         if(state.spaceDown){ startPan(ev); return; }
+        if(isQuickConstantTool()){beginQuickConstantSweep(svgPoint(ev));return;}
         if(isMultiWireTool()){ multiWirePortPress(c,p,svgPoint(ev)); return; }
         if(state.tool==="iomarker"){ addIOMarkerAt(c,p); return; }
         if(state.tool==="netname") return;
@@ -6799,6 +6902,7 @@ function render(){
   });
 
   renderMultiWirePreview(root);
+  renderQuickConstantPreview(root);
   renderComponentPlacement(root);
   updateStatus();
 }
@@ -6900,6 +7004,7 @@ function startDrag(ev, c){
     toast("อยู่หน้า Preview — กด Back ก่อนขยับ component ต่อ","info",2400); return;
   }
   if(state.spaceDown){ startPan(ev); return; }   // Space+drag pans from anywhere
+  if(isQuickConstantTool()){beginQuickConstantSweep(svgPoint(ev));return;}
   if(isMultiWireTool()){
     const point=svgPoint(ev);
     if(c.type==="JUNCTION"){
@@ -6948,6 +7053,7 @@ canvas.addEventListener("mousemove",ev=>{
   state.mouse = svgPoint(ev);
   if(componentPlacementForActive()&&!state.pan){moveComponentPlacement(state.mouse);render();updateMouseStat();return;}
   if(state.resizeDrag)return;
+  if(quickConstantSweepForActive()){updateQuickConstantSweep(state.mouse);render();return;}
   if(multiWireForActive()?.sweep){updateMultiWireSweep(state.mouse);render();return;}
   let hover=document.querySelector("#tapHover");
   if(state.tool==="bustap"){
@@ -7087,6 +7193,7 @@ window.addEventListener("mousemove",ev=>{if(state.resizeDrag)updateDrawingResize
 window.addEventListener("blur",()=>cancelDrawingResize());
 window.addEventListener("mouseup",ev=>{
   if(ev.button===0 && state.resizeDrag){finishDrawingResize();return;}
+  if(ev.button===0 && quickConstantSweepForActive()){updateQuickConstantSweep(svgPoint(ev));endQuickConstantSweep();return;}
   if(ev.button===0 && multiWireForActive()?.sweep){updateMultiWireSweep(svgPoint(ev));endMultiWireSweep();return;}
   if(state.cornerDrag){
     if(state.cornerDrag.moved) snapshot();
@@ -7237,6 +7344,8 @@ canvas.addEventListener("mousedown",ev=>{
     if(ev.ctrlKey || ev.button===1 || state.spaceDown){
       // Ctrl+drag, middle-button, or Space+drag = pan
       startPan(ev);
+    } else if(isQuickConstantTool()){
+      beginQuickConstantSweep(svgPoint(ev));
     } else if(isMultiWireTool()){
       if(state.tool==="sweepwire") beginMultiWireSweep(svgPoint(ev));
       render();
@@ -7295,7 +7404,7 @@ canvas.addEventListener("wheel",ev=>{
   render();
 },{passive:false});
 
-window.addEventListener("blur",()=>cancelMultiWireSweep());
+window.addEventListener("blur",()=>{cancelMultiWireSweep();cancelQuickConstantSweep();});
 
 /* keyboard */
 window.addEventListener("keydown",ev=>{
@@ -7332,6 +7441,7 @@ window.addEventListener("keydown",ev=>{
     return;
   }
   const numberTool = !ctl && !ev.altKey && !ev.shiftKey ? NUMBER_TOOL_SHORTCUTS[code] : null;
+  const constantTool=quickConstantShortcut(ev);
   const pm=placementForActive();
   if(pm){
     if(ev.key==="Escape"){ cancelPlacement(); ev.preventDefault(); return; }
@@ -7340,7 +7450,7 @@ window.addEventListener("keydown",ev=>{
       ev.preventDefault(); return;
     }
     const blockedPlain=["KeyW","KeyN","KeyB","KeyI","KeyS","KeyR","KeyM","F7"].includes(code)
-      || ev.key==="Delete" || ev.key==="Backspace" || !!numberTool;
+      || ev.key==="Delete" || ev.key==="Backspace" || !!numberTool || !!constantTool;
     const blockedCtrl=ctl && ["KeyZ","KeyY","KeyD","KeyC","KeyV","KeyX","KeyS","KeyO","KeyN"].includes(code);
     if(blockedPlain || blockedCtrl){
       toast("Placement Mode ย้ายตำแหน่งเท่านั้น — Preview/Accept หรือ Cancel ก่อนแก้วงจร","info",2600);
@@ -7353,6 +7463,10 @@ window.addEventListener("keydown",ev=>{
     ev.preventDefault(); return;
   }
   if(multiWireForActive()?.sweep){cancelMultiWireSweep();}
+  if(quickConstantSweepForActive()){
+    cancelQuickConstantSweep();
+    if(ev.key==='Escape'){ev.preventDefault();return;}
+  }
   if(ev.key==="Enter" && state.pendingWire && state.pendingWire.pts){
     finishWireInSpace();   // end the wire in open space (free bus stub)
     ev.preventDefault();
@@ -7374,7 +7488,8 @@ window.addEventListener("keydown",ev=>{
       setTool("select", true);
       renderInspector();
     }
-  } else if(numberTool){ setTool(numberTool); ev.preventDefault(); }
+  } else if(constantTool){setTool(constantTool);ev.preventDefault();}
+  else if(numberTool){ setTool(numberTool); ev.preventDefault(); }
   else if(!ctl && (code==="KeyW" || k==="w")){ setTool("wire"); ev.preventDefault(); }
   else if(!ctl && (code==="KeyN" || k==="n")){ setTool("netname"); ev.preventDefault(); }
   else if(!ctl && (code==="KeyB" || k==="b")){ setTool("bustap"); ev.preventDefault(); }
@@ -7637,7 +7752,7 @@ function componentParamFields(c,multiple=[]){
     else if(f.type==="int"){
       const bounds=f.key.startsWith('generic_') && td._custom?.moduleKind==='vhdl' ? vhdlGenericBounds(td._custom.generics.find(g=>'generic_'+g.name===f.key),vhdlGenericValues(td._custom,c.params||{})) : {min:f.min??1,max:f.max??64};
       html+=`<div class="row"><label>${label}</label><input aria-label="${label}" type="number" data-pk="${f.key}" min="${bounds.min}" max="${bounds.max}" value="${mixed?'':v}" ${mixed?'placeholder="หลายค่า"':''}></div>`;
-      if(f.presets) html+=`<div style="padding:0 12px 6px;display:flex;gap:4px">${f.presets.map(n=>`<button class="btn" data-width-preset="${n}" aria-label="${n} bit">${n} bit</button>`).join("")}</div>`;
+      if(f.presets) html+=`<div style="padding:0 12px 6px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px">${f.presets.map(n=>`<button class="btn" data-width-preset="${n}" aria-label="${n} bit">${n} bit</button>`).join("")}</div>`;
     }else if(f.type==="bool") html+=`<div class="row"><label>${label}${mixed?' <small>· หลายค่า</small>':''}</label><input aria-label="${label}" type="checkbox" data-pk="${f.key}" ${mixed?'data-mixed="true"':v?'checked':''}></div>`;
     else if(f.type==="select") html+=`<div class="row"><label>${label}</label><select aria-label="${label}" data-pk="${f.key}">${mixed?'<option value="" selected disabled>หลายค่า</option>':''}${f.options.map(o=>`<option value="${o}" ${!mixed&&o==v?"selected":""}>${esc(f.optionLabels?.[o]??o)}</option>`).join("")}</select></div>`;
   }
