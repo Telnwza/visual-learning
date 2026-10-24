@@ -20,6 +20,13 @@ function wiring(){
  join(good,'o',out,'i');`);return a;
 }
 
+test('download timestamps use readable local date/time separators and keep same-second names unique',()=>{
+ const a=setup();a.run('const OriginalDate=Date;Date=class extends OriginalDate{constructor(){super(2026,0,2,3,4,5);}};');
+ assert.equal(a.run(`dlName('lcdlab8all','.vhd','topall')`),'2026-01-02_03-04-05_lcdlab8all.vhd');
+ assert.equal(a.run(`dlName('lcdlab8all','.vhd','topall')`),'2026-01-02_03-04-05_lcdlab8all2.vhd');
+ assert.equal(a.run(`dlName('my_project','.schproj.json','project')`),'2026-01-02_03-04-05_myproject.schproj.json');
+ assert.equal(a.run(`dlName('counter','.sccomp.json','component')`),'2026-01-02_03-04-05_counter.sccomp.json');
+});
 test('all download routes regenerate current top instead of the displayed preview',async()=>{
  for(const route of ['exportVhdlFile()','exportAllVhdl()']){
   const a=setup();assert.ok(a.run('generateVHDL()'));
@@ -28,8 +35,19 @@ test('all download routes regenerate current top instead of the displayed previe
   assert.match(a.els.get('#vhdlOutput').dataset.raw,/entity export_top is/i);
   assert.equal(a.run(route),true);
   const bytes=await a.blobs[0].text();assert.match(bytes,/entity ux_latest_top is/i);assert.doesNotMatch(bytes,/entity export_top is/i);
+  assert.match(a.anchors[0].name,/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_uxlatesttopall\.vhd$/);
   assert.match(bytes,/SCHSTUDIO|layout/i);assert.equal(a.els.get('#vhdlFreshness').hidden,true);
  }
+});
+test('bundle filename follows the selected top while a different schematic is open',()=>{
+ const a=setup();a.run(`state.project.name='project_name';const chosen=Object.values(state.project.schematics).find(s=>s!==sch);
+ chosen.name='chosen_top';state.project.topId=chosen.id;`);
+ assert.equal(a.run('exportAllVhdl()'),true);
+ assert.match(a.anchors[0].name,/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_chosentopall\.vhd$/);
+ assert.equal(a.run('activeSch().name'),'export_top');
+ a.run(`sch.name='second_top';state.project.topId=sch.id;`);
+ assert.equal(a.run('exportVhdlFile()'),true);
+ assert.match(a.anchors[1].name,/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_secondtopall\.vhd$/);
 });
 test('export follows source, generics, wires, top selection and Undo/Redo',async()=>{
  const a=setup();a.ctx.box={fileName:'box.vhd',vhdl:`library ieee;use ieee.std_logic_1164.all;

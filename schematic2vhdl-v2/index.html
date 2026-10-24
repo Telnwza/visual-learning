@@ -961,7 +961,7 @@ body.sidebar-resizing,body.sidebar-resizing *{cursor:col-resize!important;user-s
 
       <div class="note good">
         <p class="lbl">ชื่อไฟล์ไม่ชนกัน</p>
-        <p>ไฟล์ที่ดาวน์โหลดจะขึ้นต้นด้วยวันเวลา แล้วตามด้วยชื่อที่เหลือแต่ตัวอักษรกับตัวเลข ไม่มีเว้นวรรคและอักขระพิเศษ เช่น <code class="mono">20260820185428myprojectall.vhd</code> โหลดซ้ำกี่ครั้งก็ไม่ทับกัน และพาธไม่พังตอน Vivado เรียกใช้</p>
+        <p>ไฟล์ที่ดาวน์โหลดจะขึ้นต้นด้วยวันเวลาแบบ YYYY-MM-DD_HH-mm-ss แล้วตามด้วยชื่อ Top ที่เหลือแต่ตัวอักษรกับตัวเลข เช่น <code class="mono">2026-08-20_18-54-28_topall.vhd</code> โหลดซ้ำกี่ครั้งก็ไม่ทับกัน</p>
       </div>
 
       <h3>เอาเข้า Vivado</h3>
@@ -1273,8 +1273,8 @@ const VHDL_RESERVED = new Set(("abs access after alias all and architecture arra
 const _dlIssued = new Set();
 function dlName(base, ext, fallback){
   const d = new Date(), z = n => String(n).padStart(2,"0");
-  const ts = "" + d.getFullYear() + z(d.getMonth()+1) + z(d.getDate())
-                + z(d.getHours()) + z(d.getMinutes()) + z(d.getSeconds());
+  const ts = d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate())+"_"
+                + z(d.getHours())+"-"+z(d.getMinutes())+"-"+z(d.getSeconds())+"_";
   const stem = String(base==null ? "" : base).replace(/[^A-Za-z0-9]/g,"") || fallback || "schematic";
   // the stamp only resolves to the second, and a double-click on Export fires twice
   // inside one — at which point the browser itself appends " (1)", a space and two
@@ -11121,7 +11121,7 @@ function exportVhdlFile(v='__all__'){
   const code=v==='__all__'?bundleAll(all):typeof entry==='string'?entry:entry?.code;
   if(!code){toast('ไม่มี VHDL สำหรับ '+v,'err');return false;}
   let fname;
-  if(v==="__all__")      fname = dlName(sanId(state.project.name||"project")+"all", ".vhd", "projectall");
+  if(v==="__all__")      fname = dlName(sanId(state.project.schematics[state.project.topId]?.name||"top")+"all", ".vhd", "topall");
   else                   fname = dlName(sanId(v), ".vhd", "top");
   const b = new Blob([code + layoutStamp()],{type:"text/plain"});
   const u = URL.createObjectURL(b);
