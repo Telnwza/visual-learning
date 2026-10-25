@@ -477,6 +477,7 @@ body.sidebar-resizing,body.sidebar-resizing *{cursor:col-resize!important;user-s
           <button data-act="new-project">📄 New Project</button>
           <button data-act="import-project">↓ Import Project as Sub-project…</button>
           <button data-act="open-project">📂 Open Project / Workspace…<span class="kbd">Ctrl+O</span></button>
+          <button data-act="import-workspace">↓ Import Workspace…</button>
           <button data-act="save-project">💾 Save Workspace<span class="kbd">Ctrl+S</span></button>
           <button data-act="save-as-project">Save Project As…</button>
           <button data-act="split-project">✂ แยก schematic เป็นโปรเจกต์ใหม่…</button>
@@ -1071,6 +1072,7 @@ body.sidebar-resizing,body.sidebar-resizing *{cursor:col-resize!important;user-s
       <h3>Workspace และการนำโปรเจกต์เดิมมาใช้</h3>
       <p><b>New Project</b> เพิ่มโปรเจกต์ในรายการ PROJECTS โดยเก็บงานที่เปิดอยู่ไว้ แต่ละโปรเจกต์มี Top และแท็บของตัวเอง
         <b>Save Workspace</b> บันทึกทุกโปรเจกต์ในไฟล์เดียว (v2) ส่วน <b>Open Project / Workspace</b> โหลดไฟล์มาแทน Workspace ที่เปิดอยู่</p>
+      <p><b>File → Import Workspace…</b> เพิ่มทุกโปรเจกต์จากไฟล์เข้ามาใน Workspace ปัจจุบัน ชื่อโปรเจกต์ซ้ำเติมเลขต่อท้าย และกด Ctrl+Z ย้อนกลับทั้งชุดได้</p>
       <p><b>File → Import Project as Sub-project…</b> รองรับไฟล์ .schproj.json เดิม (v1) และ Workspace (v2)
         ถ้าไฟล์มีหลายโปรเจกต์ให้เลือกต้นทาง แล้วเลือกว่าจะวาง Top เดิมเป็น <b>Sub-block ใน schematic ปัจจุบัน</b>,
         เปิดเป็น <b>โปรเจกต์ใหม่</b> หรือเพิ่มเฉพาะ <b>Schematics</b> วงจรย่อยกับ custom component จะติดมาด้วย
@@ -10624,10 +10626,25 @@ function buildProjectImport(source, destination, options={}){
   Object.keys(customs).forEach(id=>visit("CUSTOM:"+id));
   const mappedKey=key=>key.startsWith('SCH:')?'SCH:'+sidMap.get(key.slice(4)):'CUSTOM:'+customMap.get(key.slice(7));
   const explorer=sourceExplorer?{...sourceExplorer,items:Object.fromEntries(Object.entries(sourceExplorer.items).map(([key,folder])=>[mappedKey(key),folder])),order:sourceExplorer.order.map(mappedKey)}:undefined;
-  return {schematics,customs,topId:sidMap.get(P.topId),renamed:rename,explorer};
+  const topId=sidMap.get(P.topId),activeId=sidMap.get(P.activeId)||topId;
+  const openTabs=(Array.isArray(P.openTabs)?P.openTabs:[]).map(id=>sidMap.get(id)).filter(Boolean);
+  if(!openTabs.includes(activeId))openTabs.push(activeId);
+  return {schematics,customs,topId,activeId,openTabs,renamed:rename,explorer};
 }
 /* END TESTABLE PROJECT IMPORT HELPERS */
 
+function validateProjectImportPorts(project,imported=project){
+  const previous=state.project;
+  try{
+    state.project=project;
+    for(const s of [...Object.values(imported.schematics),...Object.values(imported.customs).map(c=>c.schematic).filter(Boolean)]){
+      for(const w of s.wires){
+        if(!getPort(comp(w.from.cid,s),w.from.pid) || !getPort(comp(w.to.cid,s),w.to.pid))
+          throw new Error("สายอ้างอิงพอร์ตที่ไม่มีอยู่ใน "+s.name+": "+w.id);
+      }
+    }
+  }finally{state.project=previous;}
+}
 function importProjectData(source, options={}){
   if(state.placementMode) throw new Error("กด Accept หรือ Cancel ของ Placement Mode ก่อนนำเข้า");
   if((!options.mode || options.mode==="sub") && activeSch()?.locked) throw new Error("ปลดล็อก schematic ก่อนวาง sub-block หรือเลือกนำเข้าเป็นโปรเจกต์ใหม่");
@@ -10635,16 +10652,7 @@ function importProjectData(source, options={}){
   const target=asNew ? {id:uid("prj"), name:uniqueProjectName(options.name||source.name), schematics:{}, customs:{}} : state.project;
   const staged=buildProjectImport(source,target,options);
   // Validate pin references against the staged definitions, with no UI/save changes.
-  const previous=state.project;
-  try{
-    state.project={...target,schematics:{...target.schematics,...staged.schematics},customs:{...target.customs,...staged.customs}};
-    for(const s of [...Object.values(staged.schematics),...Object.values(staged.customs).map(c=>c.schematic).filter(Boolean)]){
-      for(const w of s.wires){
-        if(!getPort(comp(w.from.cid,s),w.from.pid) || !getPort(comp(w.to.cid,s),w.to.pid))
-          throw new Error("สายอ้างอิงพอร์ตที่ไม่มีอยู่ใน "+s.name+": "+w.id);
-      }
-    }
-  }finally{ state.project=previous; }
+  validateProjectImportPorts({...target,schematics:{...target.schematics,...staged.schematics},customs:{...target.customs,...staged.customs}},staged);
   Object.assign(target.schematics,staged.schematics);
   Object.assign(target.customs,staged.customs);
   if(asNew){
@@ -10893,13 +10901,48 @@ function openProjectFromFile(){
   inp.click();
 }
 /* ---------- WORKSPACE OPERATIONS ---------- */
-function uniqueProjectName(base, excludeId){
+function uniqueProjectName(base, excludeId, projects=state.projects){
   let nm = sanId(base) || "project";
-  const taken = () => Object.keys(state.projects)
-    .some(id => id !== excludeId && (state.projects[id].name||"") === nm);
+  const taken = () => Object.keys(projects)
+    .some(id => id !== excludeId && (projects[id].name||"") === nm);
   let k = 2; const root = nm;
   while(taken()) nm = root + "_" + (k++);
   return nm;
+}
+function importWorkspaceData(payload){
+  if(state.placementMode)throw new Error('กด Accept หรือ Cancel ของ Placement Mode ก่อนนำเข้า');
+  const choices=projectFileChoices(payload),projects={...state.projects},imported=[],uidBefore=_uidN;
+  try{
+    for(const choice of choices){
+      const active=!payload.workspace||choice.id===payload.workspace.activeId;
+      const source={...choice.project,activeId:choice.project?.activeId||(active?payload.activeId:undefined),
+        openTabs:choice.project?.openTabs||(active?payload.openTabs:undefined)};
+      const target={id:uid('prj'),name:uniqueProjectName(source.name||'imported',null,projects),schematics:{},customs:{}};
+      const staged=buildProjectImport(source,target,{legacyPortOrder:payload.version!==2});
+      const project={...cloneData(source),id:target.id,name:target.name,schematics:staged.schematics,customs:staged.customs,
+        topId:staged.topId,activeId:staged.activeId,openTabs:staged.openTabs,...(staged.explorer?{explorer:staged.explorer}:{})};
+      validateProjectImportPorts(project);
+      projects[project.id]=project;imported.push(project);
+    }
+  }catch(error){_uidN=uidBefore;throw error;}
+  for(const project of imported)state.projects[project.id]=project;
+  snapshot({circuit:false});renderProjectTree();autosave();
+  return imported;
+}
+function importWorkspaceFromFile(){
+  const workspace=state.projects,input=document.createElement('input');input.type='file';input.accept='.json,application/json';
+  input.hidden=true;document.body.appendChild(input);
+  input.oncancel=()=>input.remove();
+  input.onchange=async e=>{
+    const file=e.target.files[0];if(!file){input.remove();return;}
+    try{
+      const payload=JSON.parse(await file.text());
+      if(workspace!==state.projects)throw new Error('Workspace เปลี่ยนแล้ว เลือกไฟล์นำเข้าใหม่');
+      const imported=importWorkspaceData(payload);toast(`นำเข้า ${imported.length} โปรเจกต์แล้ว`,'ok');
+    }catch(error){toast('นำเข้า Workspace ไม่สำเร็จ: '+error.message,'err');}
+    finally{input.remove();}
+  };
+  input.click();
 }
 /* the desk is remembered per project, not globally */
 function stashProjectUi(){
@@ -12689,6 +12732,7 @@ document.addEventListener("click",ev=>{
     case "placement-accept": acceptPlacement(); break;
     case "placement-cancel": cancelPlacement(); break;
     case "import-project": openImportProjectDialog(); break;
+    case "import-workspace": importWorkspaceFromFile(); break;
     case "split-project": openSplitDialog(); break;
     case "new-project": newProject(); break;
     case "open-project": openProjectFromFile(); break;
