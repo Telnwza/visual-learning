@@ -384,13 +384,24 @@ body.sidebar-resizing,body.sidebar-resizing *{cursor:col-resize!important;user-s
 .logic-mux [hidden]{display:none!important}
 .logic-mux [role="tabpanel"]{height:38vh}
 .logic-mux .logic-table{height:100%;overflow:auto;border:1px solid var(--line);border-radius:6px}
-.logic-mux textarea{height:calc(100% - 28px);min-height:0;resize:none}
+.logic-mux .logic-equation-panel,.logic-mux .logic-kmap-panel{display:flex;flex-direction:column;gap:8px}
+.logic-mux textarea{flex:1;min-height:70px;resize:none}
+.logic-mux .logic-dc{max-height:45%;overflow:auto}
+.logic-mux .logic-dc summary{cursor:pointer;font-size:12px;color:var(--ink-dim)}
+.logic-mux .logic-dc textarea{width:100%;height:80px;min-height:60px;margin-top:6px}
+.logic-mux .logic-kmap-panel .logic-table{height:auto;min-height:0;flex:1}
+.logic-mux .logic-kmap-output{flex:none;flex-direction:row;align-items:center;gap:8px}
+.logic-mux .logic-kmap-output select{width:auto;min-width:100px}
+.logic-mux .logic-kmap-index{display:block;font-size:10px;color:var(--muted);margin-bottom:3px}
+.logic-mux th[scope="row"]{position:static}
+.logic-mux .logic-index{color:var(--muted);font-weight:normal;width:40px}
 .logic-mux table{border-collapse:collapse;width:100%;text-align:center;font-family:monospace}
 .logic-mux th{position:sticky;top:0;background:var(--bg-2);padding:8px;z-index:1}
 .logic-mux td{padding:3px 8px;border-top:1px solid var(--line)}
 .logic-mux td.logic-input{color:var(--muted)}
 .logic-mux .logic-bit{min-width:38px;min-height:30px;font-family:monospace}
-.logic-mux .logic-bit[aria-pressed="true"]{color:var(--accent);border-color:var(--accent);background:var(--bg-3)}
+.logic-mux .logic-bit[data-logic-value="1"]{color:var(--accent);border-color:var(--accent);background:var(--bg-3)}
+.logic-mux .logic-bit[data-logic-value="X"]{color:var(--warn);border-color:var(--warn)}
 .logic-mux .logic-settings{display:flex;align-items:end;flex-wrap:wrap;gap:14px;margin-top:14px}
 .logic-mux .logic-settings>label{flex:0 0 180px;min-width:0}
 .logic-mux .logic-mapping{font:12px monospace;color:var(--ink-dim);white-space:pre-wrap;overflow-wrap:anywhere;flex:1;min-width:200px}
@@ -492,7 +503,7 @@ body.sidebar-resizing,body.sidebar-resizing *{cursor:col-resize!important;user-s
         </div></div>
       <div class="mi"><button data-menu="tools">Tools</button>
         <div class="dd">
-          <button data-act="logic-mux">Truth Table / Equation → Circuit…</button>
+          <button data-act="logic-mux">Truth Table / Equation / K-map → Circuit…</button>
           <hr>
           <button data-act="import-sch-text">↓ Import Schematic Text…</button>
           <button data-act="sch-text-catalog">Copy Circuit Info for AI…</button>
@@ -10059,14 +10070,14 @@ function makeLogicTable(inputText,outputText,previous){
   const rows=Array.from({length:2**inputs.length},(_,row)=>{
     let oldRow=0;
     im.forEach((old,i)=>{if(old>=0)oldRow|=logicRowBit(row,i,inputs.length)<<(previous.inputs.length-1-old);});
-    return outputs.map((_,i)=>previous?.rows[oldRow]?.[om[i]]??0);
+    return outputs.map((_,i)=>{const value=previous?.rows[oldRow]?.[om[i]];return value===undefined?0:value;});
   });
   return {inputs,outputs,rows};
 }
 function validateLogicTable(table){
   const model=makeLogicTable(table.inputs.join(','),table.outputs.join(','));
-  if(table.rows.length!==model.rows.length||table.rows.some(row=>!Array.isArray(row)||row.length!==model.outputs.length||row.some(v=>v!==0&&v!==1)))
-    throw new Error('ตารางต้องมีค่า 0 หรือ 1 ครบทุกแถว');
+  if(table.rows.length!==model.rows.length||table.rows.some(row=>!Array.isArray(row)||row.length!==model.outputs.length||row.some(v=>v!==0&&v!==1&&v!==null)))
+    throw new Error('ตารางต้องมีค่า 0, 1 หรือ X (don’t care) ครบทุกแถว');
   return table;
 }
 function parseLogicExpression(source,inputs){
@@ -10110,7 +10121,7 @@ function evaluateLogicExpression(node,row,count){
   const b=evaluateLogicExpression(node.b,row,count);
   return node.op==='&'||node.op==='*'?a&b:node.op==='^'?a^b:a|b;
 }
-function parseLogicEquations(source,inputs,outputs){
+function parseLogicEquations(source,inputs,outputs,{partial=false}={}){
   if(source.length>250000)throw new Error('สมการยาวเกินขีดจำกัด');
   const expressions=new Map(),lines=source.split(/[;\r\n]+/).map(s=>s.trim()).filter(Boolean);
   for(const line of lines){
@@ -10121,25 +10132,75 @@ function parseLogicEquations(source,inputs,outputs){
     if(expressions.has(index))throw new Error('สมการ Output ซ้ำ: '+outputs[index]);
     expressions.set(index,parseLogicExpression(assignment?assignment[2]:line,inputs));
   }
-  for(let i=0;i<outputs.length;i++)if(!expressions.has(i))throw new Error('ยังไม่มีสมการของ '+outputs[i]);
-  return outputs.map((_,i)=>expressions.get(i));
+  for(let i=0;i<outputs.length;i++)if(!partial&&!expressions.has(i))throw new Error('ยังไม่มีสมการของ '+outputs[i]);
+  return outputs.map((_,i)=>expressions.get(i)||null);
 }
-function logicEquationsToTable(source,inputs,outputs){
+function logicEquationsToTable(source,inputs,outputs,dontCares=''){
   const expressions=parseLogicEquations(source,inputs,outputs);
-  const table={inputs:[...inputs],outputs:[...outputs],rows:Array.from({length:2**inputs.length},(_,row)=>expressions.map(expr=>evaluateLogicExpression(expr,row,inputs.length)))};
+  const masks=parseLogicEquations(dontCares,inputs,outputs,{partial:true});
+  const table={inputs:[...inputs],outputs:[...outputs],rows:Array.from({length:2**inputs.length},(_,row)=>expressions.map((expr,col)=>masks[col]&&evaluateLogicExpression(masks[col],row,inputs.length)?null:evaluateLogicExpression(expr,row,inputs.length)))};
   return validateLogicTable(table);
 }
+function logicTableProducts(table,col){
+  // Cover specified 1s with prime cubes; X cells can join a cube, but 0s cannot.
+  const n=table.inputs.length,ones=table.rows.flatMap((r,i)=>r[col]===1?[i]:[]),cubes=new Map();
+  if(!ones.length)return [];
+  for(let mask=0;mask<table.rows.length;mask++)for(let bits=0;bits<table.rows.length;bits++){
+    if(bits&mask)continue;
+    const matches=table.rows.flatMap((_,row)=>(row&~mask)===bits?[row]:[]);
+    if(matches.some(row=>table.rows[row][col]===0))continue;
+    const covered=matches.filter(row=>table.rows[row][col]===1);
+    if(covered.length)cubes.set(mask+':'+bits,{mask,bits,covered,literals:n-mask.toString(2).replace(/0/g,'').length});
+  }
+  const primes=[...cubes.values()].filter(c=>!table.inputs.some((_,i)=>{
+    const bit=1<<i;return !(c.mask&bit)&&cubes.has((c.mask|bit)+':'+(c.bits&~bit));
+  }));
+  const remaining=new Set(ones),selected=[];
+  while(remaining.size){
+    const essential=[...remaining].map(row=>primes.filter(c=>c.covered.includes(row))).find(choices=>choices.length===1);
+    const best=essential?.[0]||primes.map(c=>({c,count:c.covered.filter(row=>remaining.has(row)).length}))
+      .sort((a,b)=>b.count-a.count||a.c.literals-b.c.literals||a.c.bits-b.c.bits||a.c.mask-b.c.mask)[0].c;
+    selected.push(best);best.covered.forEach(row=>remaining.delete(row));
+  }
+  return selected.map(c=>table.inputs.flatMap((_,i)=>{
+    const bit=1<<(n-1-i);return c.mask&bit?[]:[(i+1)*(c.bits&bit?1:-1)];
+  }));
+}
 function logicTableEquations(table){
+  validateLogicTable(table);
   return table.outputs.map((name,col)=>{
-    const ones=table.rows.flatMap((row,i)=>row[col]?[i]:[]);
-    let expression=ones.length===table.rows.length?'1':ones.length===0?'0':null;
-    for(let i=0;expression===null&&i<table.inputs.length;i++){
-      if(table.rows.every((r,row)=>r[col]===logicRowBit(row,i,table.inputs.length)))expression=table.inputs[i];
-      else if(table.rows.every((r,row)=>r[col]===1-logicRowBit(row,i,table.inputs.length)))expression='!'+table.inputs[i];
-    }
-    expression??=ones.map(row=>'('+table.inputs.map((n,i)=>(logicRowBit(row,i,table.inputs.length)?'':'!')+n).join(' & ')+')').join(' | ');
+    const terms=logicTableProducts(table,col);
+    const expression=!terms.length?'0':terms.some(term=>!term.length)?'1':terms.map(term=>{
+      const text=term.map(i=>(i<0?'!':'')+table.inputs[Math.abs(i)-1]).join(' & ');return term.length>1?'('+text+')':text;
+    }).join(' | ');
     return name+' = '+expression;
   }).join('\n');
+}
+function logicTableDontCares(table){
+  return logicTableEquations({...table,rows:table.rows.map(row=>row.map(bit=>bit===null?1:0))}).split('\n')
+    .filter((_,col)=>table.rows.some(row=>row[col]===null)).join('\n');
+}
+function logicKmapLayout(inputs){
+  const rowBits=Math.floor(inputs.length/2),colBits=inputs.length-rowBits;
+  const gray=bits=>Array.from({length:2**bits},(_,i)=>i^(i>>1));
+  const rows=gray(rowBits),cols=gray(colBits);
+  return {rowInputs:inputs.slice(0,rowBits),colInputs:inputs.slice(rowBits),rows,cols,
+    indices:rows.map(row=>cols.map(col=>(row<<colBits)|col))};
+}
+function nextLogicValue(value){return value===0?1:value===1?null:0;}
+function logicValueButton(table,row,col){
+  const value=table.rows[row][col]===null?'X':table.rows[row][col],bits=row.toString(2).padStart(table.inputs.length,'0');
+  return `<button class="btn logic-bit" data-logic-row="${row}" data-logic-col="${col}" data-logic-value="${value}" aria-label="${esc(table.outputs[col])}, index ${row}, ${bits}, ค่า ${value}">${value}</button>`;
+}
+function logicTableMarkup(table){
+  return `<table><thead><tr><th scope="col" class="logic-index">Index</th>${[...table.inputs,...table.outputs].map(n=>'<th scope="col">'+esc(n)+'</th>').join('')}</tr></thead><tbody>${table.rows.map((values,row)=>
+    `<tr><th scope="row" class="logic-index">${row}</th>`+table.inputs.map((_,i)=>'<td class="logic-input">'+logicRowBit(row,i,table.inputs.length)+'</td>').join('')+
+    values.map((_,col)=>'<td>'+logicValueButton(table,row,col)+'</td>').join('')+'</tr>').join('')}</tbody></table>`;
+}
+function logicKmapMarkup(table,col){
+  const map=logicKmapLayout(table.inputs),binary=(value,width)=>width?value.toString(2).padStart(width,'0'):'—';
+  return `<table class="logic-kmap"><thead><tr><th scope="col">${esc(map.rowInputs.join(', ')||'—')} \\ ${esc(map.colInputs.join(', '))}</th>${map.cols.map(value=>'<th scope="col">'+binary(value,map.colInputs.length)+'</th>').join('')}</tr></thead><tbody>${map.rows.map((value,i)=>
+    '<tr><th scope="row">'+binary(value,map.rowInputs.length)+'</th>'+map.indices[i].map(row=>`<td><small class="logic-kmap-index">${row}</small>${logicValueButton(table,row,col)}</td>`).join('')+'</tr>').join('')}</tbody></table>`;
 }
 function logicPartName(base,names){
   let name=base,i=2;while(names.has(name.toLowerCase()))name=base+'_'+i++;
@@ -10155,7 +10216,7 @@ function compileLogicMux(table,{name='logic_circuit'}={}){
   const count=table.inputs.length,width=table.outputs.length,names=new Set([...table.inputs,...table.outputs].map(n=>n.toLowerCase()));
   const muxId=logicPartName('lookup_mux',names),parts=[`part ${muxId} MUX inputs=${table.rows.length} width=${width} selectMode=pins`],links=[],constants=[],taps=[];
   table.rows.forEach((row,index)=>{
-    const id=logicPartName('lookup_d'+index,names),word=row.reduce((value,bit)=>(value<<1)|bit,0);
+    const id=logicPartName('lookup_d'+index,names),word=row.reduce((value,bit)=>(value<<1)|(bit===1?1:0),0);
     constants.push(id);parts.push(`part ${id} CONST width=${width} value=${word.toString(16)}`);
     links.push(`connect ${id}.o -> ${muxId}.d${index}`);
   });
@@ -10203,7 +10264,7 @@ function logicSopProducts(node){
 function compileLogicSop(table,{name='logic_circuit',equations}={}){
   validateLogicTable(table);vhdlBasicName(name);
   const expressions=equations===undefined?null:parseLogicEquations(equations,table.inputs,table.outputs);
-  if(expressions&&table.rows.some((row,index)=>row.some((bit,col)=>bit!==evaluateLogicExpression(expressions[col],index,table.inputs.length))))
+  if(expressions&&table.rows.some((row,index)=>row.some((bit,col)=>bit!==null&&bit!==evaluateLogicExpression(expressions[col],index,table.inputs.length))))
     throw new Error('สมการไม่ตรงกับตาราง');
   const names=new Set([...table.inputs,...table.outputs].map(n=>n.toLowerCase())),parts=[],links=[],literals=new Map(table.inputs.map((n,i)=>[i+1,n])),products=new Map(),constants=new Map();
   let gateId=0;
@@ -10226,7 +10287,7 @@ function compileLogicSop(table,{name='logic_circuit',equations}={}){
     return literals.get(number);
   };
   table.outputs.forEach((output,col)=>{
-    const terms=(expressions&&logicSopProducts(expressions[col]))||table.rows.flatMap((row,index)=>row[col]?[table.inputs.map((_,i)=>(i+1)*(logicRowBit(index,i,table.inputs.length)?1:-1))]:[]);
+    const terms=(expressions&&logicSopProducts(expressions[col]))||logicTableProducts(table,col);
     const normalized=new Map();
     for(const term of terms){
       const unique=[...new Set(term)].sort((a,b)=>Math.abs(a)-Math.abs(b));
@@ -10267,7 +10328,7 @@ function verifyLogicCircuit(sch,table){
       }else throw new Error('ชนิดอุปกรณ์ไม่รองรับในการตรวจลอจิก: '+c.type);
       visiting.delete(id);memo.set(id,bit);return bit;
     };
-    outputs.forEach((c,col)=>{if(!c||value(c.id)!==table.rows[row][col])throw new Error(`วงจรไม่ตรงตาราง: แถว ${row}, ${table.outputs[col]}`);});
+    outputs.forEach((c,col)=>{if(!c||value(c.id)!==table.rows[row][col]&&table.rows[row][col]!==null)throw new Error(`วงจรไม่ตรงตาราง: แถว ${row}, ${table.outputs[col]}`);});
   }
 }
 function createLogicCircuit(table,{mode='mux',...options}={}){
@@ -10278,7 +10339,7 @@ function createLogicCircuit(table,{mode='mux',...options}={}){
 function openLogicMuxDialog(){
   const project=state.project,m=document.createElement('div');m.className='modal-bg';
   m.innerHTML=`<div class="modal logic-mux" role="dialog" aria-modal="true" aria-labelledby="logicTitle">
-    <h2 id="logicTitle">Truth Table / Equation → Circuit <button class="close" aria-label="ปิด">×</button></h2>
+    <h2 id="logicTitle">Truth Table / Equation / K-map → Circuit <button class="close" aria-label="ปิด">×</button></h2>
     <div class="modal-body">
       <div class="logic-fields">
         <label>ชื่อ Schematic<input data-logic-name value="logic_circuit" spellcheck="false"></label>
@@ -10288,12 +10349,20 @@ function openLogicMuxDialog(){
       <div class="logic-tabs" role="tablist" aria-label="กำหนดลอจิก">
         <button class="btn" id="logicTableTab" role="tab" aria-controls="logicTablePanel" aria-selected="true" data-logic-tab="table">ตาราง</button>
         <button class="btn" id="logicEquationTab" role="tab" aria-controls="logicEquationPanel" aria-selected="false" data-logic-tab="equation" tabindex="-1">สมการ</button>
+        <button class="btn" id="logicKmapTab" role="tab" aria-controls="logicKmapPanel" aria-selected="false" data-logic-tab="kmap" tabindex="-1">K-map</button>
       </div>
       <div id="logicTablePanel" role="tabpanel" aria-labelledby="logicTableTab"><div class="logic-table" data-logic-table></div></div>
-      <div id="logicEquationPanel" role="tabpanel" aria-labelledby="logicEquationTab" hidden>
+      <div id="logicEquationPanel" class="logic-equation-panel" role="tabpanel" aria-labelledby="logicEquationTab" hidden>
         <textarea data-logic-equation aria-label="สมการ Boolean" spellcheck="false" placeholder="F = (A & B) | (!A & C)"></textarea>
+        <details class="logic-dc" data-logic-dc-section><summary>Don’t care (X)</summary>
+          <textarea data-logic-dc aria-label="สมการ Don’t care" spellcheck="false" placeholder="F = A & B (ระบุแถวที่เป็น X)"></textarea></details>
         <p class="logic-syntax">NOT: ! ~ ' not · AND: &amp; * and · XOR: ^ xor · OR: | + or</p>
       </div>
+      <div id="logicKmapPanel" class="logic-kmap-panel" role="tabpanel" aria-labelledby="logicKmapTab" hidden>
+        <label class="logic-kmap-output">Output<select data-logic-kmap-output aria-label="K-map Output"></select></label>
+        <div class="logic-table" data-logic-kmap></div>
+      </div>
+      <p class="logic-syntax">คลิกค่า: 0 → 1 → X · Input ซ้ายสุดเป็น MSB</p>
       <div class="logic-settings">
         <label>สร้างด้วย<select data-logic-mode><option value="mux">MUX + CONST</option><option value="sop">AND–OR (SOP)</option></select></label>
         <div class="logic-mapping" data-logic-mapping></div>
@@ -10307,48 +10376,62 @@ function openLogicMuxDialog(){
   q('[data-logic-equation]').value=logicTableEquations(model);
   const error=message=>{q('[data-logic-error]').textContent=message;q('[data-logic-error]').hidden=!message;q('[data-logic-create]').disabled=creating||!!message;};
   const renderTable=()=>{
-    q('[data-logic-table]').innerHTML=`<table><thead><tr>${[...model.inputs,...model.outputs].map(n=>'<th scope="col">'+esc(n)+'</th>').join('')}</tr></thead><tbody>${model.rows.map((values,row)=>
-      '<tr>'+model.inputs.map((_,i)=>'<td class="logic-input">'+logicRowBit(row,i,model.inputs.length)+'</td>').join('')+values.map((v,col)=>`<td><button class="btn logic-bit" data-logic-row="${row}" data-logic-col="${col}" aria-label="${esc(model.outputs[col])}, ${row.toString(2).padStart(model.inputs.length,'0')}" aria-pressed="${!!v}">${v}</button></td>`).join('')+'</tr>').join('')}</tbody></table>`;
+    q('[data-logic-table]').innerHTML=logicTableMarkup(model);
+  };
+  const renderKmap=()=>{
+    const select=q('[data-logic-kmap-output]'),col=Math.min(Number(select.value)||0,model.outputs.length-1);
+    select.innerHTML=model.outputs.map((name,i)=>`<option value="${i}" ${i===col?'selected':''}>${esc(name)}</option>`).join('');
+    q('[data-logic-kmap]').innerHTML=logicKmapMarkup(model,col);
   };
   const renderBuildInfo=()=>{
     const info=q('[data-logic-mapping]');info.hidden=q('[data-logic-mode]').value!=='mux';
     info.textContent=`MUX ${model.rows.length}:1 · ${model.outputs.length} bit\n`+model.inputs.map((n,i)=>`s${model.inputs.length-1-i} = ${n}`).join(', ')+
-      (model.outputs.length>1?'\n'+model.outputs.map((n,i)=>`y[${model.outputs.length-1-i}] = ${n}`).join(', '):'');
+      (model.outputs.length>1?'\n'+model.outputs.map((n,i)=>`y[${model.outputs.length-1-i}] = ${n}`).join(', '):'')+
+      (model.rows.some(row=>row.includes(null))?'\nX → 0':'');
   };
   const refresh=(applySchema=true)=>{
     try{
       vhdlBasicName(q('[data-logic-name]').value.trim());
-      const next=makeLogicTable(q('[data-logic-inputs]').value,q('[data-logic-outputs]').value,model);
+      let next=makeLogicTable(q('[data-logic-inputs]').value,q('[data-logic-outputs]').value,model);
       if(!applySchema){
-        if(sourceMode==='equation')logicEquationsToTable(q('[data-logic-equation]').value,next.inputs,next.outputs);
+        if(sourceMode==='equation')logicEquationsToTable(q('[data-logic-equation]').value,next.inputs,next.outputs,q('[data-logic-dc]').value);
         error('');return true;
       }
-      const changed=JSON.stringify([next.inputs,next.outputs])!==JSON.stringify([model.inputs,model.outputs]);
-      if(changed){
-        model=next;renderBuildInfo();renderTable();
+      if(sourceMode==='equation')next=logicEquationsToTable(q('[data-logic-equation]').value,next.inputs,next.outputs,q('[data-logic-dc]').value);
+      model=next;
+      if(sourceMode!=='equation'){
+        q('[data-logic-equation]').value=logicTableEquations(model);
+        q('[data-logic-dc]').value=logicTableDontCares(model);
+        q('[data-logic-dc-section]').open=!!q('[data-logic-dc]').value;
       }
-      if(sourceMode==='equation')model=logicEquationsToTable(q('[data-logic-equation]').value,model.inputs,model.outputs);
-      else q('[data-logic-equation]').value=logicTableEquations(model);
-      renderTable();error('');return true;
+      renderTable();renderKmap();renderBuildInfo();error('');return true;
     }catch(e){error(e.message);return false;}
   };
   const showTab=tab=>{
+    if(!refresh())return false;
     m.querySelectorAll('[data-logic-tab]').forEach(b=>{const active=b.dataset.logicTab===tab;b.setAttribute('aria-selected',String(active));b.tabIndex=active?0:-1;});
-    q('#logicTablePanel').hidden=tab!=='table';q('#logicEquationPanel').hidden=tab!=='equation';
+    q('#logicTablePanel').hidden=tab!=='table';q('#logicEquationPanel').hidden=tab!=='equation';q('#logicKmapPanel').hidden=tab!=='kmap';
+    return true;
   };
   m.querySelectorAll('[data-logic-tab]').forEach(b=>{
     b.onclick=()=>showTab(b.dataset.logicTab);
-    b.onkeydown=e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const tab=e.key==='Home'?'table':e.key==='End'?'equation':b.dataset.logicTab==='table'?'equation':'table';showTab(tab);q(`[data-logic-tab="${tab}"]`).focus();}};
+    b.onkeydown=e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const tabs=['table','equation','kmap'],index=tabs.indexOf(b.dataset.logicTab),tab=tabs[e.key==='Home'?0:e.key==='End'?2:(index+(e.key==='ArrowLeft'?2:1))%3];if(showTab(tab))q(`[data-logic-tab="${tab}"]`).focus();}};
   });
   for(const selector of ['[data-logic-name]','[data-logic-inputs]','[data-logic-outputs]']){
-    q(selector).oninput=()=>refresh(false);q(selector).onblur=()=>refresh();
+    q(selector).oninput=()=>refresh(false);
+    q(selector).onblur=()=>{
+      const names=selector==='[data-logic-inputs]'?model.inputs:selector==='[data-logic-outputs]'?model.outputs:null;
+      const changed=names&&JSON.stringify(names)!==JSON.stringify(q(selector).value.trim().split(/[\s,]+/).filter(Boolean));
+      refresh(!!changed);
+    };
   }
-  q('[data-logic-equation]').oninput=()=>{sourceMode='equation';refresh();};
-  q('[data-logic-table]').onclick=e=>{
+  for(const selector of ['[data-logic-equation]','[data-logic-dc]'])q(selector).oninput=()=>{sourceMode='equation';refresh();};
+  for(const selector of ['[data-logic-table]','[data-logic-kmap]'])q(selector).onclick=e=>{
     const b=e.target.closest('[data-logic-row]');if(!b)return;
-    const row=Number(b.dataset.logicRow),col=Number(b.dataset.logicCol);model.rows[row][col]^=1;sourceMode='table';refresh();
-    q(`[data-logic-row="${row}"][data-logic-col="${col}"]`)?.focus();
+    const row=Number(b.dataset.logicRow),col=Number(b.dataset.logicCol);model.rows[row][col]=nextLogicValue(model.rows[row][col]);sourceMode='table';refresh();
+    q(`${selector} [data-logic-row="${row}"][data-logic-col="${col}"]`)?.focus();
   };
+  q('[data-logic-kmap-output]').onchange=renderKmap;
   q('[data-logic-mode]').onchange=renderBuildInfo;
   q('.close').onclick=q('[data-logic-cancel]').onclick=()=>m.remove();
   q('[data-logic-create]').onclick=async()=>{
@@ -10364,7 +10447,7 @@ function openLogicMuxDialog(){
     }catch(e){error(e.message);}
     finally{creating=false;button.textContent='สร้าง Schematic';button.disabled=!!q('[data-logic-error]').textContent;}
   };
-  renderTable();renderBuildInfo();q('[data-logic-inputs]').focus();
+  renderTable();renderKmap();renderBuildInfo();q('[data-logic-inputs]').focus();
 }
 function schematicTextCatalog(types){
   const out=['Schematic Text v1. Use format schematic-text 1, circuit NAME, input/output name[width], part ID TYPE key=value, connect source -> target[, target].',
