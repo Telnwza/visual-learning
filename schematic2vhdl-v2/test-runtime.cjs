@@ -3,7 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-function loadApp({storage,autosaveStore}={}){
+function loadApp({storage,autosaveStore,projectTree=false}={}){
   const stub=()=>({style:{setProperty(){}},dataset:{},classList:{add(){},remove(){},toggle(){}},
     addEventListener(){},removeEventListener(){},setAttribute(){},removeAttribute(){},remove(){},append(){},appendChild(){},
     querySelectorAll(){return [];},querySelector(){return stub();},getBoundingClientRect(){return {width:900,height:650};},
@@ -22,7 +22,7 @@ function loadApp({storage,autosaveStore}={}){
     if(mode==='readwrite'){autosaveStore.set('workspace',data);return;}
     return autosaveStore.get('workspace');
   };
-  vm.runInContext(`renderAll=()=>{}; render=()=>{}; renderInspector=()=>{}; renderProjectTree=()=>{};
+  vm.runInContext(`renderAll=()=>{}; render=()=>{}; renderInspector=()=>{}; ${projectTree?'':'renderProjectTree=()=>{};'}
     autoFitSheet=()=>{}; toast=()=>{}; seedWorkspace();
     state.activeId=state.project.topId; state.openTabs=[state.activeId]; snapshot();`,ctx);
   return {run:code=>vm.runInContext(code,ctx),json:code=>JSON.parse(vm.runInContext('JSON.stringify('+code+')',ctx)),ctx,els};

@@ -3,12 +3,31 @@ const {loadApp}=require('./test-runtime.cjs');
 const source=`library ieee;use ieee.std_logic_1164.all;
 entity buffer_box is port(a:in std_logic;y:out std_logic);end;
 architecture rtl of buffer_box is begin y<=a;end;`;
-function fixture(){
- const a=loadApp();a.ctx.source=source;
+function fixture(options){
+ const a=loadApp(options);a.ctx.source=source;
  a.run(`applyVhdlModuleImport(planVhdlModuleImport([{vhdl:source}]));
  const parent=activeSch(),child=blankSchematic(uid('sch'),'child'),other=blankSchematic(uid('sch'),'other');
  state.project.schematics[child.id]=child;state.project.schematics[other.id]=other;snapshot();`);return a;
 }
+function scrollFixture(){
+ const a=fixture({projectTree:true}),pane=a.ctx.document.querySelector('#projectPane');let html=pane.innerHTML;
+ Object.defineProperty(pane,'innerHTML',{get:()=>html,set:value=>{html=value;pane.scrollTop=0;}});
+ a.run('renderAll=()=>renderProjectTree()');return {...a,pane};
+}
+test('opening schematics and VHDL source keeps the Project pane scroll position',()=>{
+ const a=scrollFixture(),idx=a.run('state.history.idx');
+ for(const action of ['openSchTab(child.id)','openSchTab(parent.id)',"openVhdlTab('buffer_box')","closeVhdlTab('buffer_box')"]){
+  a.pane.scrollTop=642.5;a.run(action);assert.equal(a.pane.scrollTop,642.5,action);
+ }
+ assert.equal(a.run('state.history.idx'),idx);
+});
+test('reordering and moving sources or folders preserves the current Project pane scroll',()=>{
+ const a=scrollFixture();a.run("const folder=addExplorerFolder('Logic');");
+ for(const action of ["reorderExplorerItem('SCH:'+child.id,'SCH:'+other.id,true)","moveExplorerItem('SCH:'+child.id,folder)","moveExplorerItem('CUSTOM:buffer_box',folder)","reorderExplorerFolder(folder,'schematics',false)",'undo()','redo()']){
+  a.pane.scrollTop=481;a.run(action);assert.equal(a.pane.scrollTop,481,action);
+ }
+ assert.equal(a.run('projectExplorer().items["SCH:"+child.id]'),a.run('folder'));
+});
 test('legacy projects get one discoverable entry per source without changing saved data on read',()=>{
  const a=fixture(),before=a.run('serialize()');
  assert.deepEqual(a.json('projectExplorer().folders.map(f=>f.name)'),['Schematics','VHDL']);
@@ -91,12 +110,27 @@ test('source deletion closes its tab, and Undo restores the module and its tab',
  assert.equal(a.run('state.activeVhdl'),null);assert.deepEqual(a.json('state.vhdlTabs'),[]);
  a.run('undo()');assert.equal(a.run('state.activeVhdl'),'buffer_box');assert.deepEqual(a.json('state.vhdlTabs'),['buffer_box']);
 });
-function editorRoot(a){
+function editorRoot(a,location='document'){
  const fields=new Map(),root=a.ctx.document.querySelector('#vhdlDocument');
  root.querySelector=s=>{if(!fields.has(s))fields.set(s,{value:'',innerHTML:'',textContent:'',style:{setProperty(){}},scrollTop:0,scrollLeft:0,focus(){}});return fields.get(s);};
- a.ctx.editorRoot=root;a.run(`renderVhdlModuleSource(editorRoot,{project:state.project,name:'buffer_box',root:'buffer_box'},{},'document')`);
+ a.ctx.editorRoot=root;a.ctx.editorLocation=location;a.run(`renderVhdlModuleSource(editorRoot,{project:state.project,name:'buffer_box',root:'buffer_box'},{},editorLocation)`);
  return {root,fields};
 }
+for(const location of ['document','inspector'])test(`${location} source editor exports the exact visible VHDL draft without applying it`,async()=>{
+ const a=fixture(),blobs=[],downloads=[],create=a.ctx.document.createElement;
+ a.ctx.document.createElement=tag=>tag==='a'?{click(){downloads.push(this.download);}}:create(tag);
+ a.ctx.URL={createObjectURL(blob){blobs.push(blob);return 'blob:module-export';},revokeObjectURL(){}};
+ const {root,fields}=editorRoot(a,location),input=fields.get('#vmReplacement');
+ assert.match(root.innerHTML,/Export VHDL/);assert.match(root.innerHTML,/Export package/);
+ const before=a.run('serialize()'),idx=a.run('state.history.idx');
+ for(const text of [source,source.replace('y<=a','y<=not a')+'\n-- ทดสอบภาษาไทย\n','entity unfinished is\n']){
+  input.value=text;input.oninput();assert.equal(fields.get('#vmExportVhdl').onclick(),true);
+  assert.equal(await blobs.at(-1).text(),text);assert.equal(blobs.at(-1).type,'text/plain');
+  assert.match(downloads.at(-1),/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_bufferbox\d*\.vhd$/);
+  assert.equal(a.run('state.project.customs.buffer_box.vhdl'),source);assert.equal(a.run('serialize()'),before);assert.equal(a.run('state.history.idx'),idx);
+ }
+ input.value='  \n';assert.equal(fields.get('#vmExportVhdl').onclick(),false);assert.equal(blobs.length,3);
+});
 test('central editor keeps invalid drafts and applies valid edits to all shared instances in one Undo',()=>{
  const a=fixture();a.run(`addComp('CUSTOM:buffer_box',0,0);addComp('CUSTOM:buffer_box',200,0);openVhdlTab('buffer_box');snapshot();const before=serialize(),idx=state.history.idx;`);
  const {fields}=editorRoot(a),input=fields.get('#vmReplacement');

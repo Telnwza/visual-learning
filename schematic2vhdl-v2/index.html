@@ -760,7 +760,7 @@ body.sidebar-resizing,body.sidebar-resizing *{cursor:col-resize!important;user-s
             <tr><td class="k">LOGIC GATES</td><td class="k">AND · OR · NAND · NOR · XOR · XNOR · NOT · BUF</td><td>เกตสองอินพุตขึ้นไปเพิ่มจำนวนขาได้ใน Inspector</td></tr>
             <tr><td class="k">MUX / DEMUX</td><td class="k">MUX · DEMUX</td><td>เลือกจำนวนช่องได้ 2, 4, 8, 16</td></tr>
             <tr><td class="k">ENCODER / DECODER</td><td class="k">ENCODER · DECODER</td><td>ขนาด 4, 8, 16</td></tr>
-            <tr><td class="k">COMPARATOR</td><td class="k">COMP · COMPM</td><td>COMP ตรวจ “เท่ากัน” · COMPM ให้ผล “มากกว่า/น้อยกว่า” ขนาด 2 และ 4 บิตแยกขาทีละบิต ส่วน 8 และ 16 บิตใช้ขาบัสข้างละเส้น</td></tr>
+            <tr><td class="k">COMPARATOR</td><td class="k">COMP · COMPM · COMP3</td><td>COMP ตรวจ “เท่ากัน” · COMPM ให้ผล “มากกว่า/น้อยกว่า” · COMP3 รวมทั้งสามขา ปรับได้ 1–64 บิต เลือกขา Bus หรือแยก bit</td></tr>
             <tr><td class="k">BUS TAP</td><td class="k">Bus Tap</td><td>จุดแตกหรือรวมบิตบนสายบัส ดูหัวข้อ 04</td></tr>
             <tr><td class="k">FLIP-FLOPS</td><td class="k">D-FF · JK-FF · T-FF · SR-FF</td><td>ต้องต่อขา CLK เสมอ ไม่งั้นจะไม่ถูกสร้างเป็นวงจร</td></tr>
             <tr><td class="k">DOCUMENTATION</td><td class="k">MODULE FRAME</td><td>กรอบเส้นประสำหรับจัดกลุ่มวงจร ปรับกว้าง×สูงเป็นหน่วยช่องตารางได้ ไม่มีพอร์ตและไม่สร้าง VHDL</td></tr>
@@ -1414,14 +1414,15 @@ function gateBodyShape(p, kind){
 }
 /* Explicit pin style for new components; absent mode preserves legacy ISE widths. */
 function cmpIsBus(p){ return p.pinMode ? p.pinMode==="bus" : (p.width||2) >= 8; }
-function cmpDef(mag){
+function cmpDef(mode){
+  const mag = mode!=="eq", all = mode==="all", label = all ? "COMP3" : mag ? "COMPM" : "COMP";
   // 5 rows for the bus form, not 4: a bus pin's label is long ("A(15:0)") and at the
   // top row it runs straight into the block title, which sits centred at y=22.
-  const rowsOf = p => (cmpIsBus(p) ? 5 : 2*gateWidth({width:p.width||2}));
+  const rowsOf = p => (cmpIsBus(p) ? 5 : Math.max(all?5:0,2*gateWidth({width:p.width||2})));
   const sizeOf = p => blockSize(110, 22*(rowsOf(p)+1));
   return {
-    label: mag ? "COMPM" : "COMP", category:"cmp",
-    defaultParams:{width:2, pinMode:"pins"},
+    label, category:"cmp",
+    defaultParams:all ? {width:8, pinMode:"bus"} : {width:2, pinMode:"pins"},
     paramSchema:[
       {key:"width", label:"ความกว้างข้อมูล (bit)", type:"int", min:1, max:64},
       {key:"pinMode",label:"A / B",type:"select",options:["pins","bus"],optionLabels:{pins:"แยก bit",bus:"Bus"}},
@@ -1437,8 +1438,9 @@ function cmpDef(mag){
         for(let i=0;i<n;i++) out.push({id:"b"+i, dir:"in", dx:0, dy:22*(n+i+1), label:"B"+i});
       }
       if(mag){
-        out.push({id:"gt", dir:"out", dx:w, dy:44,   label:"GT"});
-        out.push({id:"lt", dir:"out", dx:w, dy:h-44, label:"LT"});
+        out.push({id:"gt", dir:"out", dx:w, dy:44,   label:all?"A>B":"GT"});
+        if(all) out.push({id:"eq", dir:"out", dx:w, dy:h/2, label:"A=B"});
+        out.push({id:"lt", dir:"out", dx:w, dy:h-44, label:all?"A<B":"LT"});
       } else {
         out.push({id:"eq", dir:"out", dx:w, dy:h/2, label:"EQ"});
       }
@@ -1447,7 +1449,7 @@ function cmpDef(mag){
     shape(p){
       const n = gateWidth({width:p.width||2}), h = sizeOf(p).h;
       // ISE names the part after its width: COMP2, COMPM8 …
-      return blockShape((mag?"COMPM":"COMP")+n, 110, h, "");
+      return blockShape(all?`${label} · ${n}`:label+n, 110, h, "");
     }
   };
 }
@@ -1703,12 +1705,14 @@ const TYPES = {
   /* ---------- COMPARATORS (ISE COMP / COMPM family) ----------
      COMP  = equality only, one EQ output.
      COMPM = magnitude, GT and LT (equal is "neither", exactly as in ISE).
+     COMP3 = unsigned magnitude and equality, GT / EQ / LT together.
      One definition covers COMP2 / COMPM2 / COMPM8 / COMPMC8 from the ISE library:
      the width is a parameter, and `bus` picks the pin style — separate A0..An / B0..Bn
      pins like COMP2, or one A(n-1:0) / B(n-1:0) bus pin like COMPM8. (ISE's COMPMC8 is
      the same function as COMPM8; the C is an internal carry-chain implementation.) */
-  COMP:  cmpDef(false),
-  COMPM: cmpDef(true),
+  COMP:  cmpDef("eq"),
+  COMPM: cmpDef("mag"),
+  COMP3: cmpDef("all"),
 
   /* ---------- BUS TAP (ISE style) ----------
      Draw the thin wire first and leave its end in open space, then drop a tap on
@@ -3095,6 +3099,7 @@ function reorderSchematics(movingId, targetId, placeAfter){
 
 function renderProjectTree(){
   const root = $("#projectPane");
+  const scrollTop = root.scrollTop;
   const p = state.project;
   const html = [];
   if(state.explorerNameEdit?.project!==p)state.explorerNameEdit=null;
@@ -3209,6 +3214,7 @@ function renderProjectTree(){
     exportCustomComponent(e.dataset.exportCustom);
   }));
   bindCustomDeletion(root);
+  root.scrollTop = scrollTop;
 }
 function deleteCustomComponent(name){
   const definition=state.project.customs[name];if(!definition)return false;
@@ -7737,7 +7743,7 @@ function componentParamValue(c,key){
   if(key==='range')return {bit:c.params.bit??0,nbit:c.params.nbit??1};
   if(key==='value'&&c.type==='CONST')return BigInt('0x'+constHex(c.params)).toString(16);
   if(key.startsWith('generic_')&&td._custom?.moduleKind==='vhdl')return vhdlGenericValues(td._custom,c.params||{})[key.slice(8).toLowerCase()];
-  if(key==='pinMode'&&['COMP','COMPM'].includes(c.type))return cmpIsBus(c.params||{})?'bus':'pins';
+  if(key==='pinMode'&&['COMP','COMPM','COMP3'].includes(c.type))return cmpIsBus(c.params||{})?'bus':'pins';
   return c.params?.[key]??td.defaultParams?.[key];
 }
 function componentParamFields(c,multiple=[]){
@@ -7747,7 +7753,7 @@ function componentParamFields(c,multiple=[]){
   for(const f of td.paramSchema||[]){
     if(multiple.length&&f.key==='name')continue;
     if(c.type==="CONST" && f.key==="value"){html+=constEntryFields(c,multiple);continue;}
-    const v=f.key.startsWith('generic_') && td._custom?.moduleKind==='vhdl' ? vhdlGenericValues(td._custom,c.params||{})[f.key.slice(8).toLowerCase()] : f.key==="pinMode" && ["COMP","COMPM"].includes(c.type) ? (cmpIsBus(c.params||{})?"bus":"pins") : (c.params?.[f.key]??td.defaultParams?.[f.key]);
+    const v=f.key.startsWith('generic_') && td._custom?.moduleKind==='vhdl' ? vhdlGenericValues(td._custom,c.params||{})[f.key.slice(8).toLowerCase()] : f.key==="pinMode" && ["COMP","COMPM","COMP3"].includes(c.type) ? (cmpIsBus(c.params||{})?"bus":"pins") : (c.params?.[f.key]??td.defaultParams?.[f.key]);
     const mixed=differs(f.key);
     const label=esc(f.key==='width'?'WIDTH (bit)':f.label+(["inputs","outputs"].includes(f.key)?(["MUX","DEMUX","ENC","DEC"].includes(c.type)?" (จำนวนช่อง)":" (จำนวนขา)"):""));
     if(f.type==="string") html+=`<div class="row"><label>${label}</label><input aria-label="${label}" data-pk="${f.key}" value="${mixed?'':esc(v??"")}" placeholder="${mixed?'หลายค่า':esc(f.placeholder||"")}"></div>`;
@@ -9267,10 +9273,10 @@ function generateSchVhdl(sch){
        on one side of a comparison is the exact shape that made Vivado report an
        ambiguous "=" before. One-bit comparisons skip the array form altogether and go
        through eq(), which folds a constant driver instead of writing '0' = '1'. */
-    if(c.type==="COMP" || c.type==="COMPM"){
-      const mag = c.type==="COMPM";
+    if(c.type==="COMP" || c.type==="COMPM" || c.type==="COMP3"){
+      const mag = c.type!=="COMP", all = c.type==="COMP3";
       const n = gateWidth({width:c.params.width||2});
-      const outs = mag ? ["gt","lt"] : ["eq"];
+      const outs = all ? ["gt","eq","lt"] : mag ? ["gt","lt"] : ["eq"];
       const tie = () => outs.forEach(pid=>concurrent.push(`  ${c._nets[pid]} <= '0';`));
       let A, B, arr;
       if(cmpIsBus(c.params)){
@@ -9292,14 +9298,15 @@ function generateSchVhdl(sch){
       // concatenation is QUALIFIED, since it has no type of its own to convert from.
       const q = v => cmpIsBus(c.params) && !isLit(v) ? `unsigned(${v})` : `unsigned'(${v})`;
       const sv = v => cmpIsBus(c.params) && !isLit(v) ? v : `std_logic_vector'(${v})`;
-      if(!mag){
+      if(!mag || all){
         const cond = arr ? `${sv(A)} = ${sv(B)}`
                          : (isLit(A) && isLit(B) ? (A === B ? "true" : "false") : `${A} = ${B}`);
         concurrent.push(`  ${c._nets.eq} <= '1' when ${cond} else '0';`);
-      } else if(arr){
+      }
+      if(mag && arr){
         concurrent.push(`  ${c._nets.gt} <= '1' when ${q(A)} > ${q(B)} else '0';`);
         concurrent.push(`  ${c._nets.lt} <= '1' when ${q(A)} < ${q(B)} else '0';`);
-      } else {
+      } else if(mag) {
         // 1 bit: A>B is A=1 and B=0
         concurrent.push(`  ${c._nets.gt} <= '1' when ${eq(A,1)} and ${eq(B,0)} else '0';`);
         concurrent.push(`  ${c._nets.lt} <= '1' when ${eq(A,0)} and ${eq(B,1)} else '0';`);
@@ -11604,6 +11611,12 @@ function exportCustomComponent(name){
   URL.revokeObjectURL(u);
   toast(`Exported "${name}"${deps.size?` (+ ${deps.size} dependencies)`:""}`, "ok");
 }
+function exportVhdlModuleSource(name,source){
+  if(typeof source!=='string'||!source.trim()){toast('ไม่มีโค้ด VHDL สำหรับส่งออก','err');return false;}
+  const blob=new Blob([source],{type:'text/plain'}),url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download=dlName(sanId(name),'.vhd','module');link.click();URL.revokeObjectURL(url);
+  return true;
+}
 /* ==========================================================================
    VHDL  →  SCHEMATIC  import   (combinational gates + MUX + D flip-flop)
    Parses a .vhd file's entity/architecture and rebuilds a drawn circuit:
@@ -12528,7 +12541,7 @@ function renderVhdlModuleSource(root,edit,params={},location='inspector'){
     ${vhdlEditorMarkup('vmReplacement',draft.source)}
     <div id="vmReplaceImpact" class="source-impact" role="status"></div>
     <details><summary>พอร์ต</summary><div class="port-preview">${customPorts(cc,params).map(p=>`<span>${esc(p.name)} · ${p.dir} · ${esc(vhdlPortType(p))}</span>`).join('')}</div></details>
-    <div class="source-actions"><button class="btn" id="vmExport">Export package</button><button class="btn" id="vmReplaceCancel">ยกเลิก</button><button class="btn btn-primary" id="vmReplaceApply" disabled>Update</button></div></section>`;
+    <div class="source-actions"><button class="btn" id="vmExportVhdl">Export VHDL</button><button class="btn" id="vmExport">Export package</button><button class="btn" id="vmReplaceCancel">ยกเลิก</button><button class="btn btn-primary" id="vmReplaceApply" disabled>Update</button></div></section>`;
   const q=selector=>root.querySelector(selector);let plan=null;
   q('#vmReplacement').value=draft.source;
   if(!documentMode)q('#vmExpand').onclick=()=>openVhdlTab(name);
@@ -12551,6 +12564,7 @@ function renderVhdlModuleSource(root,edit,params={},location='inspector'){
   };
   q('#vmReplaceCancel').onclick=()=>{const error=clearVhdlSourceDraft(project,name);if(error){q('#vmReplacementDraftError').textContent=error;return;}state.vhdlSourceEdit=null;refresh();};
   q('#vmExport').onclick=()=>exportCustomComponent(name);
+  q('#vmExportVhdl').onclick=()=>exportVhdlModuleSource(name,q('#vmReplacement').value);
   bindVhdlEditor(root,'vmReplacement',source=>{q('#vmReplacementDraftError').textContent=saveVhdlSourceDraft(project,name,source);validate();if(documentMode)renderSchTabs();});
   q('#vmReplaceApply').onclick=()=>{try{if(plan){applyVhdlModuleReplacement(plan);const error=clearVhdlSourceDraft(project,name);refresh();if(error)q('#vmReplacementDraftError').textContent=error;autosave();}}catch(error){q('#vmReplaceImpact').textContent=error.message;q('#vmReplaceApply').disabled=true;}};
   validate();
